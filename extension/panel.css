@@ -17,6 +17,8 @@ select {padding:3px 5px;min-width:0}
 .section-title {display:block;color:#c6c1b9;font-size:11px;margin:0 0 5px}
 #effect {width:100%;font-size:14px;font-weight:550;height:31px}
 .stage {margin:10px 0 14px;background:#161719;border:1px solid #424347;border-radius:5px;overflow:hidden}
+.canvas {position:relative}
+#prompt:not([hidden]) {position:absolute;inset:0;display:grid;place-items:center;padding:18px;text-align:center;color:#c6c1b9;pointer-events:none}
 #preview {display:block;width:100%;height:clamp(130px,29vh,245px);touch-action:none;
   background-image:radial-gradient(#34363a .7px,transparent .85px);background-size:12px 12px}
 .stage-bar {padding:5px 8px;color:#aaa9a7;border-top:1px solid #37383a;font-size:10px}

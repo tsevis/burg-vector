@@ -1,6 +1,6 @@
 /* Illustrator's ExtendScript engine uses ES3. The panel owns effect math. */
 var BurgVectorHost = (function () {
-    var capture = null;
+    var capture = null, observed = null;
     function fail(message) { throw new Error(message); }
     function json(value) {
         var i, parts = [];
@@ -47,7 +47,7 @@ var BurgVectorHost = (function () {
         return c;
     }
     function contour(item, counts) {
-        if (item.guides || item.clipping) fail("Release clipping masks and omit guides before capturing.");
+        if (item.guides || item.clipping) fail("Release clipping masks and omit guides to preview these paths.");
         var points = [], pp = item.pathPoints;
         counts.points += pp.length;
         if (counts.points > 6000) fail("Select at most 6,000 source anchors at a time.");
@@ -104,7 +104,7 @@ var BurgVectorHost = (function () {
     function selected() {
         if (!app.documents.length) fail("Open an Illustrator document and select artwork.");
         var doc = app.activeDocument, sel = doc.selection, rows = [], shapes = [], ids = [];
-        if (!sel || !sel.length || sel.typename === "TextRange") fail("Select vector paths in Illustrator, then choose Use selection.");
+        if (!sel || !sel.length || sel.typename === "TextRange") fail("Select whole vector objects with the Selection tool.");
         for (var i = 0; i < sel.length; i++) {
             if (!sel[i].uuid) fail("Select whole vector objects with the Selection tool.");
             rows.push({item:sel[i],order:stack(sel[i])});
@@ -124,20 +124,66 @@ var BurgVectorHost = (function () {
         if (!shapes.length) fail("The selection contains no visible painted paths.");
         return {doc:doc,shapes:shapes,ids:ids,right:right,top:top,layer:rows[rows.length-1].item.layer};
     }
-    function withCoordinates(fn) {
+    function inDocumentCoordinates(fn) {
         var old = app.coordinateSystem;
         try { app.coordinateSystem = CoordinateSystem.DOCUMENTCOORDINATESYSTEM; return fn(); }
-        catch (e) { return json({error:String(e.message || e)}); }
         finally { app.coordinateSystem = old; }
     }
+    function withCoordinates(fn) {
+        try { return inDocumentCoordinates(fn); }
+        catch (e) { return json({error:String(e.message || e)}); }
+    }
+    function ticket() { return String(new Date().getTime()) + "-" + String(Math.random()).slice(2); }
+    function sameDocument(a,b) {
+        // Illustrator throws when comparing a cached reference to a closed document.
+        try { return a == b; } catch (_) { return false; }
+    }
+    function takeSnapshot() {
+        var s = selected(), data = json(s.shapes), ids = s.ids.join(",");
+        if (!capture || !sameDocument(capture.doc,s.doc) || capture.ids !== ids || capture.data !== data)
+            capture = {doc:s.doc,ids:ids,data:data,token:ticket()};
+        return '{"token":'+json(capture.token)+',"shapes":'+data+'}';
+    }
     function read() {
-        return withCoordinates(function() {
-            capture = null;
-            var s = selected(), token = String(new Date().getTime()) + "-" + String(Math.random()).slice(2);
-            var data = json(s.shapes);
-            capture = {doc:s.doc,ids:s.ids.join(","),data:data,token:token};
-            return '{"token":'+json(token)+',"shapes":'+data+'}';
-        });
+        observed = null;
+        return withCoordinates(takeSnapshot);
+    }
+    // Idle polls look at the selected objects, not their individual paths or anchors.
+    function watch(previous, inspect) {
+        try {
+            var doc = app.documents.length ? app.activeDocument : null, sel = doc ? doc.selection : null;
+            var ids = [], key = "none", state = "empty", note = doc ?
+                "Select artwork in Illustrator." : "Open an Illustrator document to preview artwork.";
+            if (sel && (sel.typename === "TextRange" || sel.typename === "InsertionPoint")) {
+                key = "text"; state = "unsupported"; note = "Select whole objects. Outline live type to preview it.";
+            } else if (sel && sel.length) {
+                for (var i = 0; i < sel.length; i++) {
+                    var item = sel[i];
+                    ids.push(item.uuid ? item.uuid + ":" + item.geometricBounds.join(",") : String(item.typename));
+                }
+                key = ids.sort().join("|"); state = "selection";
+            }
+            var same = observed && sameDocument(observed.doc,doc) && observed.key === key;
+            if (same && previous === observed.revision && !inspect) return '{"unchanged":true}';
+            var revision, reply;
+            if (state === "selection") {
+                try { reply = inDocumentCoordinates(takeSnapshot); }
+                catch (problem) { state = "unsupported"; note = String(problem.message || problem); }
+            }
+            if (state === "selection") {
+                revision = capture.token;
+            } else {
+                capture = null;
+                revision = same && observed.note === note ? observed.revision : ticket();
+                reply = json({state:state,reason:note});
+            }
+            observed = {doc:doc,key:key,revision:revision,note:state === "selection" ? null : note};
+            if (previous === revision) return '{"unchanged":true}';
+            return '{"revision":'+json(revision)+','+reply.substring(1);
+        } catch (e) {
+            observed = null; capture = null;
+            return json({error:String(e.message || e)});
+        }
     }
     function style(path, s) {
         path.filled = !!s.fill; path.stroked = !!s.stroke; path.evenodd = !!s.evenodd;
@@ -174,10 +220,10 @@ var BurgVectorHost = (function () {
     }
     function apply(token,name,shapes,placement) {
         return withCoordinates(function() {
-            if (!capture || capture.token !== token) fail("Capture the current selection again.");
+            if (!capture || capture.token !== token) fail("The selection changed. The preview is refreshing.");
             var s = selected();
-            if (capture.doc != s.doc || capture.ids !== s.ids.join(",") || capture.data !== json(s.shapes))
-                fail("The artwork or selection changed. Choose Use selection to update the preview.");
+            if (!sameDocument(capture.doc,s.doc) || capture.ids !== s.ids.join(",") || capture.data !== json(s.shapes))
+                fail("The artwork or selection changed. The preview is refreshing.");
             if (s.layer.locked || !s.layer.visible) fail("Unlock the source layer first.");
             var group = s.layer.groupItems.add(), previous = s.doc.selection;
             try {
@@ -188,12 +234,12 @@ var BurgVectorHost = (function () {
                     group.translate(s.right + 18 - b[0], s.top - b[1]);
                 }
                 s.doc.selection = null; group.selected = true;
-                capture = null;
+                capture = null; observed = null;
                 return json({count:shapes.length});
             } catch (e) {
                 group.remove(); s.doc.selection = previous; throw e;
             }
         });
     }
-    return {read:read,apply:apply};
+    return {read:read,watch:watch,apply:apply};
 })();

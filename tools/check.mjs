@@ -88,6 +88,26 @@ if (process.argv.includes("--illustrator")) {
     try {
       var ring=make(input[0]),rect=make(input[1]);app.redraw();var initial=doc.activeLayer.pageItems.length;
       function selectSource() { doc.selection=null;ring.selected=true;rect.selected=true; }
+      function watch(last,inspect) { return decode(BurgVectorHost.watch(last ? last.revision : null,!!inspect)); }
+      doc.selection=null;var empty=watch(null);
+      check(empty.state==="empty" && watch(empty).unchanged,"empty selection");
+      ring.selected=true;var first=watch(empty);
+      check(first.shapes.length===1 && watch(first).unchanged && watch(first,true).unchanged,"stable selection");
+      doc.selection=null;rect.selected=true;var second=watch(first);
+      check(second.shapes.length===1 && second.token!==first.token,"switched objects");
+      check(BurgVectorHost.apply(first.token,"stale",input,"above").indexOf("changed")>=0,"stale selection");
+      selectSource();var multi=watch(second);
+      check(multi.shapes.length===2 && multi.token!==second.token,"multiple selection");
+      var other=app.documents.add(DocumentColorSpace.RGB,180,180);
+      try {
+        other.selection=null;var away=watch(multi);
+        check(away.state==="empty" && !away.token,"switched documents");
+        var gradientPath=other.pathItems.rectangle(90,10,40,30),paint=new GradientColor();
+        paint.gradient=other.gradients.add();gradientPath.filled=true;gradientPath.fillColor=paint;gradientPath.selected=true;
+        var unsupported=watch(away);
+        check(unsupported.state==="unsupported" && !unsupported.shapes && watch(unsupported).unchanged,"unsupported artwork");
+      } finally {other.close(SaveOptions.DONOTSAVECHANGES);}
+      selectSource();check(watch(unsupported).shapes.length===2,"return to source document");
       for(var i=0;i<cases.length;i++) {
         selectSource(); var c=cases[i],source=decode(BurgVectorHost.read());
         check(source.shapes[0].fill[0]===input[0].fill[0], "source stacking");
@@ -124,11 +144,13 @@ if (process.argv.includes("--illustrator")) {
       selectSource();var token=decode(BurgVectorHost.read()).token;
       var out=decode(BurgVectorHost.apply(token,"placement",input,"beside"));var placed=doc.selection[0];
       check(Math.abs(placed.visibleBounds[0]-ring.visibleBounds[2]-18)<0.02,"beside placement");
+      var follow=watch({revision:token});
+      check(follow.shapes.length===input.length && follow.token!==token && watch(follow).unchanged,"follow created result");
       placed.remove();
       selectSource();token=decode(BurgVectorHost.read()).token;
       var rollback=BurgVectorHost.apply(token,"rollback",[input[0],{paths:[]}],"above");
       check(rollback.indexOf("error")>=0 && doc.activeLayer.pageItems.length===initial,"partial output rollback");
-      return "PASS Illustrator "+app.version+" | "+rows.join(", ")+" | stacking, Bezier handles, placement, stale artwork and rollback";
+      return "PASS Illustrator "+app.version+" | "+rows.join(", ")+" | selection tracking, stacking, Bezier handles, placement, stale artwork and rollback";
     } catch(e) { return "FAIL: "+e.message+" (line "+e.line+")"; }
     finally { doc.close(SaveOptions.DONOTSAVECHANGES); }
   })();`);

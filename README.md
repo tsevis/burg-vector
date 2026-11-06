@@ -8,9 +8,9 @@ Select a path, turn a control, and watch the preview. Choose **Vary** to try a n
 
 1. Open Creative Cloud Desktop and sign in. Double-click **Install Burg Vector.command** next to **Burg Vector.zxp**. It calls Adobe’s Unified Plugin Installer Agent.
 2. Reopen Illustrator and choose **Window → Extensions → Burg Vector**.
-3. Select a filled shape, an outlined letter, or a group of paths and click **Use selection**. The preview identifies whether it is showing your selection or the sample.
+3. Select a filled shape, an outlined letter, or a group of paths. The preview follows the current Illustrator selection automatically. Deselect everything to clear it.
 4. Choose an effect. Change the controls, compare it with **Show original**, or try the alternate preset. **Save** remembers one personal preset per effect on this Mac.
-5. Click **Create vector artwork**. By default the result sits 18 points to the right of the source, on the source layer. **Over original** places it at the source coordinates. The result is selected so you can move it, ungroup it, or capture it for another effect.
+5. Click **Create vector artwork**. By default the result sits 18 points to the right of the source, on the source layer. **Over original** places it at the source coordinates. Illustrator selects the result, and the panel follows it so you can apply another effect.
 
 To remove the installed extension, open Creative Cloud Desktop and use **Manage plugins**. The package uses a self-signed development certificate.
 

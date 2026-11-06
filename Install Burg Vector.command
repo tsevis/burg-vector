@@ -11,4 +11,18 @@ if [[ ! -x "$agent" ]]; then
   exit 1
 fi
 "$agent" --install "$project_dir/Burg Vector.zxp"
+ext_dir='/Library/Application Support/Adobe/CEP/extensions'
+manifest='CSXS/manifest.xml'
+# The first prototype could remain discoverable under the same panel ID after upgrading.
+# Retire only that exact manifest, and only after the new files are in place.
+old="$ext_dir/Vector Effects/$manifest"
+if [[ -f "$old" && "$(shasum -a 256 "$old" | cut -d' ' -f1)" == 'ff49123d58717d3dd23ea4e7e747b52363127757f74c1b8f58c206c5778d10e2' ]]; then
+  if [[ -f "$ext_dir/Burg Vector/$manifest" ]] && cmp -s "$ext_dir/Burg Vector/$manifest" <(unzip -p "$project_dir/Burg Vector.zxp" "$manifest"); then
+    mv -n "$old" "$old.disabled-by-burg-vector"
+    if [[ -f "$old" ]]; then
+      print -u2 'The old Vector Effects panel is still enabled. Its manifest needs to be moved aside.'
+      exit 1
+    fi
+  fi
+fi
 print 'Reopen Illustrator, then choose Window > Extensions > Burg Vector.'

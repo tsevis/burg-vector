@@ -8,7 +8,9 @@
   const values=new Map(), controls=new Map(), beforeVariation=new Map();
   const bridge=window.__adobe_cep__;
   let token=null,busy=false,result=null,original=false,frame=0;
-  let effect=VectorCatalog[0],source=sample(),drag=null,stageBounds=null;
+  let effect=VectorCatalog[0],source=bridge ? [] : sample(),drag=null,stageBounds=null;
+  let revision=null,reading=false,inspectNext=false,timer=0,epoch=0;
+  let idleMessage="Looking for selected artwork…";
   let editOrigin=null;
   const defaults=()=>Object.fromEntries(effect.controls.map(c=>[c.key,c.value]));
   const params=()=>values.get(effect.id);
@@ -36,7 +38,7 @@
   }
   function sync() {
     $("apply").disabled=busy || !token || !result;
-    $("capture").disabled=busy || !bridge;
+    $("compare").disabled=!source.length;
     $("effect").disabled=busy;
     $("vary").disabled=busy || !result;
   }
@@ -106,11 +108,11 @@
         slider.type="range";slider.setAttribute("aria-label",c.label);
         const contours=source.flatMap(s=>s.paths);
         let max=c.max;
-        if (effect.id==="point" && c.key==="index") {
+        if (contours.length && effect.id==="point" && c.key==="index") {
           const target=contours[params().contour-1];
           max=Math.min(c.max,target ? target.points.length : Math.max(...contours.map(p=>p.points.length)));
         }
-        if (effect.id==="point" && c.key==="contour") max=Math.min(c.max,contours.length);
+        if (contours.length && effect.id==="point" && c.key==="contour") max=Math.min(c.max,contours.length);
         params()[c.key]=Math.min(params()[c.key],max);
         for (const el of [num,slider]) {el.min=c.min;el.max=max;el.step=c.step;el.value=params()[c.key];}
         slider.oninput=()=>{num.value=slider.value;setValue(c,Number(slider.value));};
@@ -134,6 +136,10 @@
   const paint=c=>c ? "rgb("+c.slice(0,3).map(Math.round).join(",")+")" : "none";
   function draw() {
     const view=$("preview"),output=original || !result ? source : result;
+    $("prompt").hidden=!!source.length;
+    $("compare").textContent=original ? "Show effect" : "Show original";
+    $("compare").setAttribute("aria-pressed",String(original));
+    if (!source.length) {view.replaceChildren();$("prompt").textContent=idleMessage;return;}
     const b=G.bounds(source), all=G.bounds(source.concat(result||[]),true);
     const corners={tl:[b.x0,b.y1],tr:[b.x1,b.y1],bl:[b.x0,b.y0],br:[b.x1,b.y0]};
     const handles=[];
@@ -189,46 +195,58 @@
         }
       }
     }
-    $("compare").textContent=original ? "Show effect" : "Show original";
-    $("compare").setAttribute("aria-pressed",String(original));
   }
   function renderNow() {
     if (frame) {cancelAnimationFrame(frame);frame=0;}
+    if (!source.length) {result=null;status("");draw();sync();return;}
     try {
       result=VectorEffects.run(effect.id,source,params());
       const anchors=result.reduce((n,s)=>n+s.paths.reduce((sum,p)=>sum+p.points.length,0),0);
       if (token) status(result.length+" vector "+(result.length===1?"object":"objects")+" · "+anchors+" anchors");
       else if (!bridge) status("Sample preview. Open the panel in Illustrator to use your artwork.");
-      else status("Select artwork in Illustrator, then choose Use selection.");
     } catch (e) {result=null;status(e.message,true);}
     draw();sync();
   }
   function schedule() {
     if (!frame) frame=requestAnimationFrame(()=>{frame=0;renderNow();});
   }
-  async function capture() {
-    if (!bridge || busy) return;
-    busy=true;sync();
+  function showSelection(data) {
+    revision=data.revision || null; token=data.token || null; source=data.shapes || [];
+    drag=editOrigin=stageBounds=null;original=false;
+    idleMessage=data.reason || "";
+    $("source").textContent=token ? "Selection · "+source.length+" "+(source.length===1?"object":"objects") :
+      data.state==="empty" ? "No selection" : "Preview unavailable";
+    if (effect.id==="point") buildControls();
+    renderNow();
+  }
+  async function refresh(inspect=false) {
+    clearTimeout(timer);
+    inspectNext=inspectNext || inspect;
+    if (!bridge || busy || reading || document.hidden) return;
+    const stamp=epoch, deep=inspectNext;inspectNext=false;reading=true;
+    let delay=450;
     try {
-      const data=await host("BurgVectorHost.read()");
-      token=data.token; source=data.shapes;original=false;
-      $("source").textContent="Selection · "+source.length+" "+(source.length===1?"object":"objects");
-      buildControls();renderNow();
-    } catch(e) {token=null;source=sample();$("source").textContent="Sample artwork";buildControls();renderNow();status(e.message,true);}
-    finally {busy=false;sync();}
+      const data=await host("BurgVectorHost.watch("+JSON.stringify(revision)+","+deep+")");
+      if (stamp===epoch && !data.unchanged) showSelection(data);
+    } catch(e) {
+      delay=1500;
+      if (stamp===epoch && (revision || idleMessage!==e.message)) showSelection({reason:e.message});
+    } finally {
+      reading=false;
+      if (!busy && !document.hidden) timer=setTimeout(()=>refresh(),inspectNext ? 0 : delay);
+    }
   }
   async function apply() {
     renderNow();
     if (!result || !token || busy) return;
     const args=[token,effect.name,result,$("placement").value].map(v=>
       JSON.stringify(v).replace(/\u2028/g,"\\u2028").replace(/\u2029/g,"\\u2029"));
-    busy=true;sync();status("Creating editable paths…");
+    busy=true;epoch++;clearTimeout(timer);sync();status("Creating editable paths…");
     try {
       const data=await host("BurgVectorHost.apply("+args.join(",")+")");
       token=null;status("Created "+data.count+" vector "+(data.count===1?"object":"objects")+". The result is selected.");
-      $("source").textContent="Previous selection";
     } catch(e) {status(e.message,true);}
-    finally {busy=false;sync();}
+    finally {busy=false;sync();refresh(true);}
   }
   const view=$("preview");
   view.addEventListener("pointerdown",e=>{
@@ -282,6 +300,11 @@
     catch (_) {status("This panel could not save the preset.",true);}
   };
   $("compare").onclick=()=>{original=!original;draw();};
-  $("capture").onclick=capture;$("apply").onclick=apply;
-  selectEffect(effect.id);if (bridge) capture();
+  $("apply").onclick=apply;
+  if (bridge) {
+    $("source").textContent="Selection";
+    window.addEventListener("focus",()=>refresh(true));
+    document.addEventListener("visibilitychange",()=>refresh(!document.hidden));
+  }
+  selectEffect(effect.id);if (bridge) refresh();
 })();

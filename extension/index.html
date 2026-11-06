@@ -7,11 +7,11 @@
 </head>
 <body>
 <main>
-  <header><h1>Burg Vector</h1><button id="capture" type="button">Use selection</button></header>
+  <header><h1>Burg Vector</h1></header>
   <label class="section-title" for="effect">Effect</label>
   <select id="effect"></select>
   <div class="stage">
-    <svg id="preview" aria-label="Effect preview" role="img" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="canvas"><svg id="preview" aria-label="Effect preview" role="img" xmlns="http://www.w3.org/2000/svg"></svg><div id="prompt" hidden></div></div>
     <div class="stage-bar"><span id="source">Sample artwork</span><button id="compare" aria-pressed="false" type="button">Show original</button></div>
   </div>
   <div class="preset-row"><label for="preset">Preset</label><select id="preset"></select><button id="vary" type="button" title="Preview a small variation of these settings">Vary</button><button id="save" type="button" title="Save the current settings for this effect">Save</button></div>
