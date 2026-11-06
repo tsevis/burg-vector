@@ -5,5 +5,10 @@ if [ "$#" -ne 3 ] || [ -z "${ZXP_PASSWORD:-}" ]; then
     exit 2
 fi
 project_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-"$1" -sign "$project_dir/extension" "$3" "$2" "$ZXP_PASSWORD"
+# Set ZXP_TSA to a timestamp server URL so the signature outlives the certificate.
+if [ -n "${ZXP_TSA:-}" ]; then
+    "$1" -sign "$project_dir/extension" "$3" "$2" "$ZXP_PASSWORD" -tsa "$ZXP_TSA"
+else
+    "$1" -sign "$project_dir/extension" "$3" "$2" "$ZXP_PASSWORD"
+fi
 "$1" -verify "$3"
