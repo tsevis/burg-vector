@@ -8,12 +8,12 @@ Burg Vector brings thirteen vector effects to Adobe Illustrator 2026. Select art
 
 ## Installation
 
-Version **0.2.4** targets desktop Illustrator **2026 (30.x)** and Adobe’s CEP 12 panel runtime. The signed extension is [Burg Vector.zxp](Burg%20Vector.zxp). To get the files together, choose **Code → Download ZIP** on the repository home page and extract the archive.
+Version **0.2.4** targets desktop Illustrator **2026 (30.x)** and Adobe’s CEP 12 panel runtime. The signed extension is [Burg Vector.zxp](Burg%20Vector.zxp). For macOS, choose **Code → Download ZIP** on the repository home page and extract the archive. For Windows, use the installer ZIP below.
 
 | Platform | Status |
 | --- | --- |
 | macOS | Installed and tested in Illustrator 30.8.2, including all thirteen effects and a 3,600 pt extrusion. |
-| Windows x64 (Intel or AMD) | Expected to work with the same ZXP. Installation and effects still need a test in Illustrator on Windows. |
+| Windows x64 (Intel or AMD) | The installer was exercised on Windows with simulated Adobe installer responses. End-to-end installation and effects in Illustrator on Windows still need verification. |
 
 ### macOS
 
@@ -23,16 +23,14 @@ Version **0.2.4** targets desktop Illustrator **2026 (30.x)** and Adobe’s CEP 
 
 ### Windows x64
 
-The panel and its Illustrator scripts are JavaScript, with no bundled native binaries. Adobe documents CEP panels for Windows and macOS. The supplied `.command` installer is for Mac. On Windows, use the installer included with Creative Cloud Desktop. [Adobe CEP 12 documentation](https://github.com/Adobe-CEP/CEP-Resources/blob/master/CEP_12.x/Documentation/CEP%2012%20HTML%20Extension%20Cookbook.md) · [Adobe’s installation instructions](https://helpx.adobe.com/creative-cloud/apps/integration-with-other-apps/manage-plugins/install-plugins-using-upia-tool.html)
+**[Download the Windows installer for Burg Vector 0.2.4 (ZIP)](https://github.com/tsevis/burg-vector/releases/download/v0.2.4/Burg-Vector-0.2.4-Windows.zip)**
 
-1. Sign in to Creative Cloud Desktop and save any open Illustrator work.
-2. Open **Command Prompt** in the extracted folder containing **Burg Vector.zxp**. Run:
+1. Install Illustrator 2026 (30.x) and sign in to Creative Cloud Desktop.
+2. Right-click the downloaded ZIP and choose **Extract All**. Open the extracted folder and double-click **Install Burg Vector.cmd**. Keep **Burg Vector.zxp** alongside it.
+3. Wait for **Burg Vector 0.2.4 is installed**. Save your work, restart Illustrator, and choose **Window → Extensions → Burg Vector**.
+4. Select a filled rectangle, choose **3D Transform**, and click **Create vector artwork**. A new group beside the rectangle confirms the panel can read and write artwork in Illustrator.
 
-   ```bat
-   "%CommonProgramFiles%\Adobe\Adobe Desktop Common\RemoteComponents\UPI\UnifiedPluginInstallerAgent\UnifiedPluginInstallerAgent.exe" /install "%CD%\Burg Vector.zxp"
-   ```
-
-3. After a successful install, restart Illustrator and open **Window → Extensions → Burg Vector**. Select a filled rectangle, choose **3D Transform**, then click **Create vector artwork**. A separate group beside the rectangle confirms the panel can read the selection and write paths.
+The installer calls Adobe’s Unified Plugin Installer Agent and checks that Creative Cloud lists the installed version. If it cannot find the Adobe installer, open or update Creative Cloud Desktop, sign in, and try again. If Adobe reports an error, its message stays in the installer window until you press a key. [Adobe’s installation instructions](https://helpx.adobe.com/creative-cloud/apps/integration-with-other-apps/manage-plugins/install-plugins-using-upia-tool.html)
 
 To remove the extension, use **Manage plugins** in Creative Cloud Desktop. This build uses a self-signed development certificate.
 
