@@ -1,0 +1,6 @@
+#!/bin/sh
+# LocalGit quality gate. The Illustrator suite opens documents, so it stays a manual run:
+# node tools/check.mjs --illustrator
+set -eu
+cd "$(dirname "$0")"
+exec node tools/check.mjs
