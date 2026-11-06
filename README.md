@@ -2,9 +2,9 @@
 
 An Illustrator panel with thirteen vector effects — extrude, warp, fracture, inset, sketch, glow and more — whose results are always plain, editable paths. A homage to **KPT Vector Effects**, Kai Krause’s plug-ins that once turned Illustrator into a playground.
 
-Select artwork and the panel previews it live. Drag across a control, move the light on its sphere, let **Explore** breed variations, then press **✓** to create the artwork. Nothing is a live effect or a raster: the result is a group of ordinary paths you can recolour, ungroup and keep editing. The blue block and white figure below were extruded together; the long white ridges are the side walls of the figure itself.
+Select artwork and the panel previews it live. Drag across a control, move the light on its sphere, let **Explore** breed variations, then press **✓** to create the artwork. Nothing is a live effect or a raster: the result is a group of ordinary paths you can recolour, ungroup and keep editing. Below, the panel is in Explore mode beside the finished extrusion. The blue block and white figure were extruded together; the long ridges are the side walls of the figure itself.
 
-![A white figure and blue rectangle extruded together, with the figure’s outline forming long ridges across the block](screenshots/Screenshot%202026-11-06%20at%2018.15.02.png)
+![The Burg Vector panel in Explore mode, with nine 3D variations of a white figure on a blue block, beside the finished extrusion in Illustrator](screenshots/panel-3d-transform-result.png)
 
 **Status: in use on macOS.** All thirteen effects are tested end to end in Illustrator 30.8.2: each result is written into a real document, read back and compared anchor by anchor and handle by handle. The Windows installer is built but has not yet been tried with Illustrator on Windows. Free and open source under the [MIT License](LICENSE).
 
@@ -12,7 +12,7 @@ Select artwork and the panel previews it live. Drag across a control, move the l
 
 ## Installation
 
-Version **0.3.0** targets desktop Illustrator **2026 (30.x)** and Adobe’s CEP 12 panel runtime. The signed extension is [Burg Vector.zxp](Burg%20Vector.zxp). For macOS, choose **Code → Download ZIP** on the repository home page and extract the archive. For Windows, use the installer ZIP below.
+Version **0.3.1** targets desktop Illustrator **2026 (30.x)** and Adobe’s CEP 12 panel runtime. The signed extension is [Burg Vector.zxp](Burg%20Vector.zxp). For macOS, choose **Code → Download ZIP** on the repository home page and extract the archive. For Windows, use the installer ZIP below.
 
 | Platform | Status |
 | --- | --- |
@@ -27,11 +27,11 @@ Version **0.3.0** targets desktop Illustrator **2026 (30.x)** and Adobe’s CEP 
 
 ### Windows x64
 
-**[Download the Windows installer for Burg Vector 0.3.0 (ZIP)](https://github.com/tsevis/burg-vector/releases/download/v0.3.0/Burg-Vector-0.3.0-Windows.zip)**
+**[Download the Windows installer for Burg Vector 0.3.1 (ZIP)](https://github.com/tsevis/burg-vector/releases/download/v0.3.1/Burg-Vector-0.3.1-Windows.zip)**
 
 1. Install Illustrator 2026 (30.x) and sign in to Creative Cloud Desktop.
 2. Right-click the downloaded ZIP and choose **Extract All**. Open the extracted folder and double-click **Install Burg Vector.cmd**. Keep **Burg Vector.zxp** alongside it.
-3. Wait for **Burg Vector 0.3.0 is installed**. Save your work, restart Illustrator, and choose **Window → Extensions → Burg Vector**.
+3. Wait for **Burg Vector 0.3.1 is installed**. Save your work, restart Illustrator, and choose **Window → Extensions → Burg Vector**.
 4. Select a filled rectangle, choose **3D Transform**, and click **Create vector artwork**. A new group beside the rectangle confirms the panel can read and write artwork in Illustrator.
 
 The installer calls Adobe’s Unified Plugin Installer Agent and checks that Creative Cloud lists the installed version. If it cannot find the Adobe installer, open or update Creative Cloud Desktop, sign in, and try again. If Adobe reports an error, its message stays in the installer window until you press a key. [Adobe’s installation instructions](https://helpx.adobe.com/creative-cloud/apps/integration-with-other-apps/manage-plugins/install-plugins-using-upia-tool.html)
@@ -40,31 +40,29 @@ To remove the extension, use **Manage plugins** in Creative Cloud Desktop. This 
 
 ## Try the pictured extrusion
 
-![Illustrator selection on the left and the Burg Vector panel on the right previewing a 240 pt extrusion](screenshots/Screenshot%202026-11-06%20at%2018.14.37.png)
-
 1. Select a filled silhouette and its background together. The preview follows the selection automatically. For lettering, make an outlined copy first.
-2. Choose **3D Transform**. The screenshot uses **Rotate X 15°**, **Y 30°**, **Z 19°**, **Extrusion 240 pt**, **Perspective 50%**, and **Light source 96°**. For a longer extrusion, drag across **Extrusion** up to **3,600 pt**, or double-click it and type any whole-point depth. Dragging moves by 1 pt through 180 pt and by 20 pt beyond it.
+2. Choose **3D Transform**. The screenshot uses **Rotate X 31°**, **Y 31°**, **Z 40°**, **Extrusion 166 pt**, **Perspective 85%**, **Axis origin Y 29%**, **Complexity 10**, **Light source 68°**, **Metallic 40%**, **Whitepoint 34%** and **Blackpoint 100%**. For a longer extrusion, drag across **Extrusion** up to **3,600 pt**, or double-click it and type any whole-point depth. The control moves by 1 pt through 180 pt and by 20 pt beyond it.
 3. Use **Show original** to compare. Choose **Beside original** and click **Create vector artwork** to place a new group 18 pt to the right, on the source layer. **Over original** uses the source coordinates and keeps the original artwork underneath.
 4. Illustrator selects the new group. You can ungroup it to edit a face, apply a different effect to the whole result, or reselect the original to try another version.
 
 ## One figure, six effects
 
-Each pair shows the same three selected objects. Click any screenshot to inspect the controls at full size.
+Each screenshot is the panel with the same three objects selected. Most are in **Explore** mode: the framed centre tile is the current setting and the eight around it are its variations. Click any screenshot to see it at full size.
 
-| Warp Frame | Taper a design with four corner handles and bow each edge. Then bend the whole frame into an Arc, Bulge, Wave, Flag or Twist. |
+| 3D Transform | Warp Frame |
 | --- | --- |
-| [![Warp Frame panel with four corner handles around a tapered blue frame and white figure](screenshots/Screenshot%202026-11-06%20at%2018.15.34.png)](screenshots/Screenshot%202026-11-06%20at%2018.15.34.png) | [![Vector Distort panel twisting the figure into a white spiral](screenshots/Screenshot%202026-11-06%20at%2018.15.46.png)](screenshots/Screenshot%202026-11-06%20at%2018.15.46.png) |
-| **Receding plane** brings the top corners together. Drag any corner in the preview to adjust the taper. | The **Swirl** lens twists the figure and background around a shared center. Move the center to change where the twist starts. |
+| [![Explore mode showing nine 3D extrusions of the figure and block at different angles](screenshots/explore-3d-transform.png)](screenshots/explore-3d-transform.png) | [![Explore mode showing nine warps of the figure, tapered, bent and leaning](screenshots/explore-warp-frame.png)](screenshots/explore-warp-frame.png) |
+| Explore breeds new angles, depths and perspectives from the extrusion above. Click a tile to adopt it and breed again. | Corner and bow settings mutate together, from gentle tapers to a figure swept sideways. |
 
-| Fracture | Cut closed shapes into cells or radial fragments. Set the impact center, separation and rotation, open grout gaps, let the pieces fall with gravity, and jitter their colours. |
+| Fracture | Color Shift |
 | --- | --- |
-| [![Fracture panel showing separated blue and white polygon fragments](screenshots/Screenshot%202026-11-06%20at%2018.15.52.png)](screenshots/Screenshot%202026-11-06%20at%2018.15.52.png) | [![Sketch panel outlining the figure and its blue frame with loose pen strokes](screenshots/Screenshot%202026-11-06%20at%2018.16.05.png)](screenshots/Screenshot%202026-11-06%20at%2018.16.05.png) |
-| **Cells** cuts the artwork into pieces. Increase **Separation** to open the cracks, or change **Seed** for a different break pattern. | Two pen passes trace the silhouette. Adjust **Roughness** for a looser line and **Pen width** for a heavier mark. |
+| [![Fracture breaking the figure and its block into separated blue and white cells](screenshots/fracture.png)](screenshots/fracture.png) | [![Explore mode showing nine colour variations of the figure, from deep blue to red](screenshots/explore-color-shift.png)](screenshots/explore-color-shift.png) |
+| **Cells** with 14 fragments, 12 pt separation and 8° rotation scatter. Grout gap, gravity and colour jitter sit under **Pieces**. | Hue, saturation and the new colorize, posterize and randomize settings, explored from one blue figure. |
 
-| Emboss | Build a highlight and shadow along an edge. Set the relief depth, light angle, contrast and softness, and choose both colours. |
+| Sketch | Neon |
 | --- | --- |
-| [![Emboss panel showing a narrow highlight and shadow along the white figure](screenshots/Screenshot%202026-11-06%20at%2018.16.21.png)](screenshots/Screenshot%202026-11-06%20at%2018.16.21.png) | [![Flare panel placing a twelve-ray starburst on the figure’s outstretched arm](screenshots/Screenshot%202026-11-06%20at%2018.16.28.png)](screenshots/Screenshot%202026-11-06%20at%2018.16.28.png) |
-| A shallow **1.5 pt** edge picks out the figure against the blue. Rotate **Light direction** to change which edge catches the light. | Drag the flare center onto a detail. **Rays**, **Ray radius**, and **Halo size** control the starburst separately. |
+| [![Explore mode showing nine sketched figures, several with cross-hatching inside the blue block](screenshots/explore-sketch.png)](screenshots/explore-sketch.png) | [![Explore mode showing nine neon versions of the figure with soft white glows](screenshots/explore-neon.png)](screenshots/explore-neon.png) |
+| **Cross-hatch** at 52° and 5.5 pt spacing, clipped inside each shape, with one rough pen pass over the outlines. | Tube width, glow bands, intensity and falloff varied together, from a thin filament to a full bloom. |
 
 ## Effect guide
 
@@ -86,7 +84,9 @@ Each pair shows the same three selected objects. Click any screenshot to inspect
 
 ## The panel
 
-The controls work the way Kai Krause’s tools did: there are no sliders to aim at. **Drag across any control** to change it, hold **Shift** for fine steps, or double-click it to type a value. Blue handles in the preview move centres, corners and the 3D axis origin.
+Every control is a glossy pill that works as a slider, in the spirit of Kai Krause’s tools. **Click or drag along a pill** to set its value, hold **Shift** for fine steps from where it is, or double-click it to type a value. Drag the highlight on the sphere to move the light. Blue handles in the preview move centres, corners and the 3D axis origin.
+
+The panel fits itself to its height. Spare room goes to the preview; in a short panel the preview shrinks first and then the settings scroll. Click a section heading, such as *Bevel*, to fold it away; each effect remembers its folded sections.
 
 - **Tweak and Explore.** Tweak is for adjusting one setting at a time. Explore fills the preview with eight variations around the current settings; click one to adopt it and breed again from there. **Mutation** sets how adventurous the children are, and **New family** rolls another set.
 - **Presets.** The ▾ button above the preview opens the presets, drawn as thumbnails of your own artwork. ⊕ adds the current settings under a name, ⊖ removes the selected one, and ⊘ returns to the defaults. The dice button previews a small variation; **Before variation** in the presets takes you back.

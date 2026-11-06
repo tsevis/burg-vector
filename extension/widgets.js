@@ -1,7 +1,18 @@
-/* Controls in the KPT spirit: drag across a pill to change its value. Each widget calls
-   onInput(value, final); final is true when a drag ends or a value is typed. */
+/* Controls in the KPT spirit: each pill is a slider, so click or drag along it to set its value.
+   Each widget calls onInput(value, final); final is true when a drag ends or a value is typed. */
 const VectorWidgets = (() => {
-  const DRAG_SPAN=260, FINE=0.1;
+  const FINE=0.1;
+  // Follows a mouse drag at window level. Pointer capture is unreliable in Illustrator's panel
+  // runtime, and the window keeps reporting moves after the pointer leaves the element.
+  function track(el,down,move,up) {
+    el.addEventListener("mousedown",e=>{
+      if (e.button!==0 || down(e)===false) return;
+      e.preventDefault();
+      const onMove=ev=>move(ev);
+      const onUp=ev=>{window.removeEventListener("mousemove",onMove);window.removeEventListener("mouseup",onUp);up(ev);};
+      window.addEventListener("mousemove",onMove);window.addEventListener("mouseup",onUp);
+    });
+  }
   const decimals=c=>(String(c.step).split(".")[1]||"").length;
   const format=(c,v)=>Number(v).toFixed(decimals(c))+(c.unit==="°" ? "°" : c.unit ? " "+c.unit : "");
   function ticks(c) {
@@ -19,10 +30,10 @@ const VectorWidgets = (() => {
   function scrubber(c,value,onInput) {
     const pill=make("div","pill scrub"), label=make("span","pill-label",c.label), out=make("span","pill-value");
     const meter=make("span","meter"), fill=make("i");meter.append(fill);
-    const t=ticks(c);let current=value,drag=null;
+    const t=ticks(c);let current=value,drag=null,lastPress=null;
     pill.tabIndex=0;pill.setAttribute("role","slider");pill.setAttribute("aria-label",c.label);
     pill.setAttribute("aria-valuemin",c.min);pill.setAttribute("aria-valuemax",c.max);
-    pill.title=c.label+" — drag across, or double-click to type";
+    pill.title=c.label+" — click or drag along it, Shift for fine steps, double-click to type";
     pill.append(label,out,meter);
     const show=v=>{
       current=v;out.textContent=format(c,v);
@@ -33,30 +44,37 @@ const VectorWidgets = (() => {
       const v=t.from(Math.max(0,Math.min(t.count,tick)));
       if (v!==current || final) {show(v);onInput(v,final);}
     };
-    pill.addEventListener("pointerdown",e=>{
-      if (e.button!==0 || e.target.tagName==="INPUT") return;
-      drag={x:e.clientX,tick:t.to(current),moved:false,fine:e.shiftKey};pill.setPointerCapture(e.pointerId);
-    });
-    pill.addEventListener("pointermove",e=>{
-      if (!drag) return;
-      // Pressing or releasing Shift mid-drag continues from the current value.
-      if (e.shiftKey!==drag.fine) drag={...drag,x:e.clientX,tick:t.to(current),fine:e.shiftKey};
-      const dx=e.clientX-drag.x;
-      if (Math.abs(dx)>2 && !drag.moved) {drag.moved=true;pill.classList.add("scrubbing");}
-      if (drag.moved) commit(drag.tick+Math.round(dx/Math.max(0.35,DRAG_SPAN/Math.max(1,t.count))*(e.shiftKey ? FINE : 1)),false);
-    });
-    const end=()=>{
-      if (drag && drag.moved) commit(t.to(current),true);
-      drag=null;pill.classList.remove("scrubbing");
+    // Plain drags place the value under the pointer; Shift switches to fine steps from where it is.
+    const at=e=>{
+      const r=meter.getBoundingClientRect();
+      return Math.round(Math.max(0,Math.min(1,(e.clientX-r.left)/Math.max(1,r.width)))*t.count);
     };
-    pill.addEventListener("lostpointercapture",end);
+    const place=e=>{
+      if (e.shiftKey!==drag.fine) drag={...drag,x:e.clientX,tick:t.to(current),fine:e.shiftKey};
+      const width=Math.max(1,meter.getBoundingClientRect().width);
+      commit(drag.fine ? drag.tick+Math.round((e.clientX-drag.x)/width*t.count*FINE) : at(e),false);
+    };
+    track(pill,e=>{
+      if (e.target.tagName==="INPUT") return false;
+      const recent=lastPress && Date.now()-lastPress.time<600;
+      drag={x:e.clientX,tick:t.to(current),fine:e.shiftKey,before:recent ? lastPress.value : current};
+      pill.classList.add("scrubbing");pill.focus({preventScroll:true});
+      if (!drag.fine) place(e);
+    },e=>{if (drag) place(e);},()=>{
+      if (drag) {lastPress={value:drag.before,time:Date.now()};commit(t.to(current),true);}
+      drag=null;pill.classList.remove("scrubbing");
+    });
     pill.addEventListener("keydown",e=>{
       const step={ArrowRight:1,ArrowUp:1,ArrowLeft:-1,ArrowDown:-1}[e.key];
       if (step) {e.preventDefault();commit(t.to(current)+step*(e.shiftKey ? 10 : 1),true);}
       else if (e.key==="Home" || e.key==="End") {e.preventDefault();commit(e.key==="Home" ? 0 : t.count,true);}
       else if (e.key==="Enter") {e.preventDefault();entry();}
     });
-    pill.addEventListener("dblclick",entry);
+    pill.addEventListener("dblclick",e=>{
+      if (e.target.tagName==="INPUT") return;
+      if (lastPress && Date.now()-lastPress.time<600 && lastPress.value!==current) commit(t.to(lastPress.value),true);
+      entry();
+    });
     function entry() {
       if (pill.querySelector("input")) return;
       const box=make("input","entry");box.type="number";box.min=c.min;box.max=c.max;box.step="any";box.value=current;
@@ -109,10 +127,8 @@ const VectorWidgets = (() => {
       angle=Math.round(Math.atan2(r.top+r.height/2-e.clientY,e.clientX-r.left-r.width/2)*180/Math.PI);
       place(angle);readout.set(angle);onInput(angle,false);
     };
-    ball.addEventListener("pointerdown",e=>{dragging=true;ball.setPointerCapture(e.pointerId);pick(e);});
-    ball.addEventListener("pointermove",e=>{if (dragging) pick(e);});
-    // Release events can carry no coordinates, so finish with the angle last shown.
-    ball.addEventListener("lostpointercapture",()=>{if (dragging) {dragging=false;onInput(angle,true);}});
+    // The release can land outside the panel, so finish with the angle last shown.
+    track(ball,e=>{dragging=true;pick(e);},e=>{if (dragging) pick(e);},()=>{if (dragging) {dragging=false;onInput(angle,true);}});
     row.append(ball,readout.el);place(value);
     return {el:row,set:v=>{place(v);readout.set(v);}};
   }
@@ -122,5 +138,5 @@ const VectorWidgets = (() => {
     if (c.dial) return sphere(c,value,onInput);
     return scrubber(c,value,onInput);
   }
-  return {control,scrubber,format};
+  return {control,scrubber,format,track};
 })();

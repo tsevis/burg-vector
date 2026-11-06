@@ -44,5 +44,12 @@ const VectorSettings = (() => {
     return isObject(stored) && typeof stored.effect==="string" && isObject(stored.values) ? stored : null;
   }
   const saveLast=(effect,values)=>write(LAST,{effect,values});
-  return {DEFAULTS,prefs,savePrefs,presets,savePreset,removePreset,last,saveLast};
+  // Folded control sections, as "effect/Section title" keys.
+  const FOLDS="burg-vector.folds";
+  function folds() {
+    const stored=read(FOLDS);
+    return Array.isArray(stored) ? stored.filter(k=>typeof k==="string" && k.length<120).slice(0,200) : [];
+  }
+  const saveFolds=list=>write(FOLDS,list);
+  return {DEFAULTS,prefs,savePrefs,presets,savePreset,removePreset,last,saveLast,folds,saveFolds};
 })();
