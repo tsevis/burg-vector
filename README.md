@@ -1,56 +1,108 @@
 # Burg Vector
 
-Burg Vector is an independent collection of thirteen editable vector effects for Adobe® Illustrator® 2026 on macOS. It was inspired by KPT Vector Effects 1.5. This project is unaffiliated with the original publisher, Corel, or Adobe.
+Burg Vector brings thirteen vector effects to Adobe Illustrator 2026. Select artwork to see it in the panel, adjust the effect, then create a group of editable paths. The blue block and white figure below were extruded together. The long white ridges are the side walls of the figure itself.
 
-Select a path, turn a control, and watch the preview. Choose **Vary** to try a nearby setting. Use **Preset → Before variation** to go back, or **Save** to keep a combination you like. Only **Create vector artwork** writes the result to your document.
+![A white figure and blue rectangle extruded together, with the figure’s outline forming long ridges across the block](screenshots/Screenshot%202026-11-06%20at%2018.15.02.png)
 
-## Install and use
+[Install Burg Vector](#installation) · [Try the pictured extrusion](#try-the-pictured-extrusion) · [Screenshot gallery](#one-figure-six-effects) · [All 13 effects](#effect-guide)
 
-1. Open Creative Cloud Desktop and sign in. Double-click **Install Burg Vector.command** next to **Burg Vector.zxp**. It calls Adobe’s Unified Plugin Installer Agent.
-2. Reopen Illustrator and choose **Window → Extensions → Burg Vector**.
-3. Select a filled shape, an outlined letter, or a group of paths. The preview follows the current Illustrator selection automatically. Deselect everything to clear it.
-4. Choose an effect. Change the controls, compare it with **Show original**, or try the alternate preset. **Save** remembers one personal preset per effect on this Mac.
-5. Click **Create vector artwork**. By default the result sits 18 points to the right of the source, on the source layer. **Over original** places it at the source coordinates. Illustrator selects the result, and the panel follows it so you can apply another effect.
+## Installation
 
-To remove the installed extension, open Creative Cloud Desktop and use **Manage plugins**. The package uses a self-signed development certificate.
+Version **0.2.4** targets desktop Illustrator **2026 (30.x)** and Adobe’s CEP 12 panel runtime. The signed extension is [Burg Vector.zxp](Burg%20Vector.zxp). To get the files together, choose **Code → Download ZIP** on the repository home page and extract the archive.
 
-## Included effects
-
-| Effect | Controls and output in this build |
+| Platform | Status |
 | --- | --- |
-| 3D Transform | Extrusion from 0 to 3,600 pt, XYZ rotation, perspective and directional lighting. The depth slider moves in 1 pt steps through 180 pt, then in 20 pt steps. Type any whole-point depth for exact placement. |
-| Color Shift | Hue, saturation, lightness, inversion, grayscale and contrast for fills and strokes. |
-| Emboss | Offset highlight and shadow shapes with adjustable depth, contrast and light angle. |
-| Flare | Adjustable rays, halo and center. Drag the center in the preview. |
-| Inset | Inward and outward path offsets with three corner treatments. Enclosed holes participate in the offset. |
-| Neon | Graduated glow bands around contours with an adjustable bright core. |
-| Point Editor | Move anchors and incoming or outgoing handles, subdivide a Bézier segment, smooth an anchor or make it a corner. Drag a point to target one contour. |
-| Shadow Echo | Repeated vector shadows with distance, direction, fade, scale and rotation. |
-| Fracture | Seeded cell fragments or a radial fracture, with an adjustable impact center, separation and rotation. Fragments are cut paths. |
-| Simplify | Reduce anchors by fitting adjacent Bézier segments within a sampled tolerance. |
-| Sketch | Seeded pen passes with adjustable roughness, width and density. |
-| Vector Distort | Swirl, Spherize, Pinch, Rotate, Magnify, Zig, Zag and ZigZag lenses with movable center and adjustable radius. |
-| Warp Frame | Drag the four corner handles, or set their coordinates numerically. Bow each edge independently. |
+| macOS | Installed and tested in Illustrator 30.8.2, including all thirteen effects and a 3,600 pt extrusion. |
+| Windows x64 (Intel or AMD) | Expected to work with the same ZXP. Installation and effects still need a test in Illustrator on Windows. |
 
-## Artwork and fidelity
+### macOS
 
-Use solid RGB, CMYK or grayscale fills and strokes. Ordinary groups and compound paths are supported. Outline text and expand brushes and complex appearances before capturing. Clipping masks, group transparency, spot/gradient/pattern paint and raster artwork require preparation. 3D Transform, Inset and Fracture require closed, filled paths. Inset and Fracture polygonize curved boundaries to compute intersections.
+1. Open Creative Cloud Desktop and sign in.
+2. In the extracted folder, double-click **Install Burg Vector.command**. Keep it next to **Burg Vector.zxp**.
+3. After the installer reports success, restart Illustrator and choose **Window → Extensions → Burg Vector**.
 
-The build targets the filter workflows and produces expanded artwork. Native Appearance-panel live effects, legacy preset import, multi-impact and multi-lens editing, 3D bevels and metallic materials are outside this version. Visual parity with the original binaries has yet to be measured. The package contains the independently written extension and the Clipper geometry library.
+### Windows x64
 
-## Development
+The panel and its Illustrator scripts are JavaScript, with no bundled native binaries. Adobe documents CEP panels for Windows and macOS. The supplied `.command` installer is for Mac. On Windows, use the installer included with Creative Cloud Desktop. [Adobe CEP 12 documentation](https://github.com/Adobe-CEP/CEP-Resources/blob/master/CEP_12.x/Documentation/CEP%2012%20HTML%20Extension%20Cookbook.md) · [Adobe’s installation instructions](https://helpx.adobe.com/creative-cloud/apps/integration-with-other-apps/manage-plugins/install-plugins-using-upia-tool.html)
 
-The extension runs offline. Its catalog is in `extension/catalog.js`, geometry and filter implementations are in `geometry.js`, `path-effects.js` and `effects.js` under that directory. The panel renders the same path data that `host.jsx` writes to Illustrator. A capture is checked again before writing, and a failed write removes the partially created group.
+1. Sign in to Creative Cloud Desktop and save any open Illustrator work.
+2. Open **Command Prompt** in the extracted folder containing **Burg Vector.zxp**. Run:
 
-Run the following commands from the project directory using Node.js 20 or later.
+   ```bat
+   "%CommonProgramFiles%\Adobe\Adobe Desktop Common\RemoteComponents\UPI\UnifiedPluginInstallerAgent\UnifiedPluginInstallerAgent.exe" /install "%CD%\Burg Vector.zxp"
+   ```
+
+3. After a successful install, restart Illustrator and open **Window → Extensions → Burg Vector**. Select a filled rectangle, choose **3D Transform**, then click **Create vector artwork**. A separate group beside the rectangle confirms the panel can read the selection and write paths.
+
+To remove the extension, use **Manage plugins** in Creative Cloud Desktop. This build uses a self-signed development certificate.
+
+## Try the pictured extrusion
+
+![Illustrator selection on the left and the Burg Vector panel on the right previewing a 240 pt extrusion](screenshots/Screenshot%202026-11-06%20at%2018.14.37.png)
+
+1. Select a filled silhouette and its background together. The preview follows the selection automatically. For lettering, make an outlined copy first.
+2. Choose **3D Transform**. The screenshot uses **Rotate X 15°**, **Y 30°**, **Z 19°**, **Extrusion 240 pt**, **Perspective 50%**, and **Light direction 96°**. For a longer extrusion, drag the slider up to **3,600 pt**, or type any whole-point depth. The slider moves by 1 pt through 180 pt and by 20 pt beyond it.
+3. Use **Show original** to compare. Choose **Beside original** and click **Create vector artwork** to place a new group 18 pt to the right, on the source layer. **Over original** uses the source coordinates and keeps the original artwork underneath.
+4. Illustrator selects the new group. You can ungroup it to edit a face, apply a different effect to the whole result, or reselect the original to try another version.
+
+## One figure, six effects
+
+Each pair shows the same three selected objects. Click any screenshot to inspect the controls at full size.
+
+| Warp Frame | Vector Distort |
+| --- | --- |
+| [![Warp Frame panel with four corner handles around a tapered blue frame and white figure](screenshots/Screenshot%202026-11-06%20at%2018.15.34.png)](screenshots/Screenshot%202026-11-06%20at%2018.15.34.png) | [![Vector Distort panel twisting the figure into a white spiral](screenshots/Screenshot%202026-11-06%20at%2018.15.46.png)](screenshots/Screenshot%202026-11-06%20at%2018.15.46.png) |
+| **Receding plane** brings the top corners together. Drag any corner in the preview to adjust the taper. | The **Swirl** lens twists the figure and background around a shared center. Move the center to change where the twist starts. |
+
+| Fracture | Sketch |
+| --- | --- |
+| [![Fracture panel showing separated blue and white polygon fragments](screenshots/Screenshot%202026-11-06%20at%2018.15.52.png)](screenshots/Screenshot%202026-11-06%20at%2018.15.52.png) | [![Sketch panel outlining the figure and its blue frame with loose pen strokes](screenshots/Screenshot%202026-11-06%20at%2018.16.05.png)](screenshots/Screenshot%202026-11-06%20at%2018.16.05.png) |
+| **Cells** cuts the artwork into pieces. Increase **Separation** to open the cracks, or change **Seed** for a different break pattern. | Two pen passes trace the silhouette. Adjust **Roughness** for a looser line and **Pen width** for a heavier mark. |
+
+| Emboss | Flare |
+| --- | --- |
+| [![Emboss panel showing a narrow highlight and shadow along the white figure](screenshots/Screenshot%202026-11-06%20at%2018.16.21.png)](screenshots/Screenshot%202026-11-06%20at%2018.16.21.png) | [![Flare panel placing a twelve-ray starburst on the figure’s outstretched arm](screenshots/Screenshot%202026-11-06%20at%2018.16.28.png)](screenshots/Screenshot%202026-11-06%20at%2018.16.28.png) |
+| A shallow **1.5 pt** edge picks out the figure against the blue. Rotate **Light direction** to change which edge catches the light. | Drag the flare center onto a detail. **Rays**, **Ray radius**, and **Halo size** control the starburst separately. |
+
+## Effect guide
+
+| Effect | What you can make |
+| --- | --- |
+| 3D Transform | Rotate and extrude filled paths. The front, back and shaded side walls become editable vector faces. |
+| Warp Frame | Taper a design with four corner handles, then bow each edge independently. |
+| Vector Distort | Apply Swirl, Spherize, Pinch, Rotate, Magnify, Zig, Zag or ZigZag around a movable center. |
+| Fracture | Cut closed shapes into cells or radial fragments. Set the impact center, separation and rotation. |
+| Inset | Offset an outline inward or outward, including the holes in compound paths. Choose round, miter or square joins. |
+| Point Editor | Move an anchor or either Bézier handle, subdivide a segment, or switch a point between smooth and corner. |
+| Simplify | Reduce anchor count. A lower curve tolerance keeps the result closer to the source contour. |
+| Sketch | Trace paths with repeatable, slightly irregular pen strokes. Control roughness, passes, width and seed. |
+| Color Shift | Change hue, saturation, lightness, contrast, inversion and grayscale for fills and strokes. |
+| Emboss | Build a highlight and shadow along an edge. Set the relief depth, light angle and contrast. |
+| Flare | Add a movable halo and rays. Set their size, angle and number. |
+| Neon | Build a bright tube and layered glow bands around a contour. |
+| Shadow Echo | Repeat the silhouette along a direction, fading, scaling or rotating the copies. |
+
+Each effect has a built-in alternate preset. **Vary** previews a small change to the current settings. Choose **Preset → Before variation** to compare, or **Save** to keep one personal preset per effect on this computer.
+
+## Preparing artwork
+
+- **Paths and color.** Select painted paths, compound paths or ordinary groups with solid RGB, CMYK or grayscale fills or strokes. Outline live type, expand brushes and complex appearances, and release clipping masks before selecting the artwork. Convert spot, gradient or pattern paint to solid colors where needed.
+- **Closed shapes.** 3D Transform, Inset and Fracture need closed, filled paths. Inset and Fracture approximate curves with line segments when calculating offsets and intersections.
+- **Complex selections.** Work in batches of up to 150 painted objects and 6,000 source anchors. If a result exceeds 1,800 objects or 40,000 anchors, reduce the detail or select fewer objects.
+- **Editing afterward.** Keep the original if you want to revisit settings. The result is an expanded group of Illustrator paths. A new selection immediately replaces the panel preview, and deselecting clears it.
+
+## Development and credits
+
+The panel runs offline. The [effect catalog](extension/catalog.js) defines the controls. [effects.js](extension/effects.js) and [path-effects.js](extension/path-effects.js) generate the geometry used for both the preview and the Illustrator result. The [host script](extension/host.jsx) checks the selection again before writing and removes a partially created group if a write fails.
+
+From the repository directory, run the geometry checks with Node.js 20 or later:
 
 ```sh
 node tools/check.mjs
-node tools/check.mjs --illustrator
 ```
 
-The second command runs the suite through AppleScript in a disposable Illustrator document and closes that document afterward. To rebuild the ZXP, set `ZXP_PASSWORD` for your own signing identity and run `tools/package.sh /path/to/ZXPSignCmd /path/to/identity.p12 output.zxp`. The vendored Clipper library includes JSBN. Their copyright and license notices travel with the source and signed extension. [Third-party notices](extension/vendor/LICENSES.txt)
+On a Mac with Illustrator installed, `node tools/check.mjs --illustrator` also creates results in temporary Illustrator documents and checks the paths it reads back. To sign a new ZXP, set `ZXP_PASSWORD` for your signing identity and run `tools/package.sh /path/to/ZXPSignCmd /path/to/identity.p12 output.zxp`.
 
-Adobe documents the panel runtime, packaging tools and command-line installation. [CEP resources](https://github.com/Adobe-CEP/CEP-Resources) · [Adobe plug-in installer](https://helpx.adobe.com/ca/creative-cloud/apps/integration-with-other-apps/manage-plugins/install-plugins-using-upia-tool.html)
+Burg Vector is an independent implementation inspired by KPT Vector Effects 1.5. It recreates filter workflows with editable output. Legacy presets, Appearance-panel live effects, 3D bevels and metallic materials are outside this version. The original software and manual are excluded from the distribution. The project is unaffiliated with the original publisher, Corel or Adobe.
 
-Adobe and Illustrator are either registered trademarks or trademarks of Adobe in the United States and/or other countries.
+The extension includes the Clipper geometry library and its JSBN component. [Third-party notices](extension/vendor/LICENSES.txt)
