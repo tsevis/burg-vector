@@ -10,7 +10,8 @@ const VectorCatalog = (() => {
   return [
     {id:"extrude", name:"3D Transform", family:"Form", controls:[
       angle("rx","Rotate X",20), angle("ry","Rotate Y",-28), angle("rz","Rotate Z",0),
-      pt("depth","Extrusion",28,0,180), pct("perspective","Perspective",0,0,85), angle("light","Light direction",130)],
+      {...pt("depth","Extrusion",28,0,3600),fineMax:180,coarseStep:20},
+      pct("perspective","Perspective",0,0,85), angle("light","Light direction",130)],
       preset:["Deep relief",{rx:35,ry:32,depth:56,light:75}]},
     {id:"warp", name:"Warp Frame", family:"Form", controls:[
       ...["tl","tr","bl","br"].flatMap((key,i) => ["x","y"].map(axis =>

@@ -72,7 +72,9 @@
       const [input]=controls.get(key), min=Number(input.min), max=Number(input.max), step=Number(input.step);
       const steps=Math.round((max-min)/step), current=Math.round((previous[key]-min)/step);
       if (!steps) continue;
-      const distance=Math.max(1,Math.round(steps*(0.035+Math.random()*0.065)));
+      const {fineMax}=effect.controls.find(c=>c.key===key);
+      const span=fineMax===undefined ? steps : Math.max(fineMax,previous[key])/step;
+      const distance=Math.max(1,Math.round(span*(0.035+Math.random()*0.065)));
       const towardMax=current===0 || (current<steps && Math.random()<0.5);
       const moved=Math.max(0,Math.min(steps,current+(towardMax ? distance : -distance)));
       next[key]=Number((min+moved*step).toFixed(4));
@@ -114,11 +116,21 @@
         }
         if (contours.length && effect.id==="point" && c.key==="contour") max=Math.min(c.max,contours.length);
         params()[c.key]=Math.min(params()[c.key],max);
-        for (const el of [num,slider]) {el.min=c.min;el.max=max;el.step=c.step;el.value=params()[c.key];}
-        slider.oninput=()=>{num.value=slider.value;setValue(c,Number(slider.value));};
+        const {fineMax=Infinity,coarseStep=1}=c;
+        const toTick=v=>v>fineMax ? fineMax+Math.round((v-fineMax)/coarseStep) : v;
+        const fromTick=t=>t>fineMax ? fineMax+(t-fineMax)*coarseStep : t;
+        const positionSlider=v=>{
+          slider.value=toTick(v);
+          if (c.fineMax!==undefined) slider.setAttribute("aria-valuetext",v+" "+c.unit);
+        };
+        num.min=slider.min=c.min;num.step=slider.step=c.step;
+        num.max=max;slider.max=toTick(max);num.value=params()[c.key];positionSlider(params()[c.key]);
+        slider.oninput=()=>{
+          const v=fromTick(Number(slider.value));num.value=v;positionSlider(v);setValue(c,v);
+        };
         num.onchange=()=>{
           if (!num.value || !num.validity.valid) {num.value=params()[c.key];return;}
-          slider.value=num.value;setValue(c,Number(slider.value));
+          const v=Number(num.value);positionSlider(v);setValue(c,v);
         };
         controls.set(c.key,[num,slider]);title.append(num);row.append(slider);
       }

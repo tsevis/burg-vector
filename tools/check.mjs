@@ -36,6 +36,11 @@ for (const e of ["extrude","warp","shatter","color","point"]) {
   assert.ok(run(e,source,data).length);
 }
 const only=[rect],box=G.bounds(only);
+for (const depth of [180,1800,2713,3600]) {
+  const walls=run("extrude",only,{rx:0,ry:30,rz:0,perspective:0,depth});
+  const expectedWidth=box.w*Math.cos(Math.PI/6)+depth/2;
+  assert.ok(Math.abs(G.bounds(walls).w-expectedWidth)<0.001,"Projected extrusion at "+depth+" pt");
+}
 const inset=G.bounds(run("inset",only,{distance:2}));
 assert.ok(Math.abs(inset.w-(box.w-4))<0.001);
 assert.equal(run("simplify",only,{error:0.3})[0].paths[0].points.length,4);
@@ -56,6 +61,7 @@ for (const e of catalog.filter(e=>!["shatter","inset","extrude"].includes(e.id))
 console.log("13/13 effects and presets passed geometry checks. Verified inset, compound holes, shatter area, open paths, source preservation and anchor editing.");
 
 if (process.argv.includes("--illustrator")) {
+  cases.push({name:"3,600 pt extrusion",result:run("extrude",source,{rx:180,ry:60,rz:91,depth:3600,perspective:85,light:-56})});
   const temp=mkdtempSync(join(tmpdir(),"vector-effects-qa-"));
   const script=join(temp,"suite.jsx"), apple=join(temp,"run.applescript");
   const runHost=(file)=>execFileSync("/usr/bin/osascript",[apple,file],

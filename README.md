@@ -18,7 +18,7 @@ To remove the installed extension, open Creative Cloud Desktop and use **Manage 
 
 | Effect | Controls and output in this build |
 | --- | --- |
-| 3D Transform | Extrusion depth, XYZ rotation, perspective and directional lighting. Faces and shaded side walls are vector paths. |
+| 3D Transform | Extrusion from 0 to 3,600 pt, XYZ rotation, perspective and directional lighting. The depth slider moves in 1 pt steps through 180 pt, then in 20 pt steps. Type any whole-point depth for exact placement. |
 | Color Shift | Hue, saturation, lightness, inversion, grayscale and contrast for fills and strokes. |
 | Emboss | Offset highlight and shadow shapes with adjustable depth, contrast and light angle. |
 | Flare | Adjustable rays, halo and center. Drag the center in the preview. |
