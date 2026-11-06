@@ -1,0 +1,23 @@
+# Local reference materials from the original distribution
+/Reference/
+/* Installer
+/*-Clip
+*.sit
+*.sitx
+*.rsrc
+
+# Local packages from the earlier prototype and release-review archives
+/Vector Effects.zxp
+/Thirteen Dials.zxp
+/Thirteen-Dials-GitHub.zip
+/Burg-Vector-GitHub.zip
+
+# Finder metadata and private signing material
+.DS_Store
+._*
+*.p12
+*.pfx
+*.pem
+*.key
+.env
+.env.*

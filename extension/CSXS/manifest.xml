@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionManifest Version="7.0" ExtensionBundleId="studio.vector-effects.remake" ExtensionBundleVersion="0.2.1" ExtensionBundleName="Burg Vector">
+  <ExtensionList><Extension Id="studio.vector-effects.remake.panel" Version="0.2.1"/></ExtensionList>
+  <ExecutionEnvironment>
+    <HostList><Host Name="ILST" Version="[30.0,30.99]"/></HostList>
+    <LocaleList><Locale Code="All"/></LocaleList>
+    <RequiredRuntimeList><RequiredRuntime Name="CSXS" Version="12.0"/></RequiredRuntimeList>
+  </ExecutionEnvironment>
+  <DispatchInfoList><Extension Id="studio.vector-effects.remake.panel"><DispatchInfo>
+    <Resources><MainPath>./index.html</MainPath><ScriptPath>./host.jsx</ScriptPath></Resources>
+    <Lifecycle><AutoVisible>true</AutoVisible></Lifecycle>
+    <UI><Type>Panel</Type><Menu>Burg Vector</Menu>
+      <Geometry><Size><Height>620</Height><Width>352</Width></Size><MinSize><Height>350</Height><Width>270</Width></MinSize></Geometry>
+    </UI>
+  </DispatchInfo></Extension></DispatchInfoList>
+</ExtensionManifest>
