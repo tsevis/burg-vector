@@ -204,9 +204,16 @@ var BurgVectorHost = (function () {
         var path;
         for (var i = s.paths.length - 1; i >= 0; i--) {
             var p = s.paths[i], anchors = [], pts = p.points;
-            if (pts.length > 1000) fail("Illustrator limits each contour to 1,000 anchors in this build. Reduce the effect detail or simplify the source.");
-            for (var j = 0; j < pts.length; j++) anchors.push([pts[j][0],pts[j][1]]);
-            path = parent.pathItems.add(); path.setEntirePath(anchors); path.closed = p.closed;
+            // effects.js enforces the same per-path limit before preview.
+            if (pts.length > 32000) fail("A result path exceeds 32,000 anchors, Illustrator's limit. Reduce detail or simplify the source.");
+            // setEntirePath rejects more than 1,000 points; append the rest one at a time.
+            for (var j = 0; j < Math.min(pts.length,1000); j++) anchors.push([pts[j][0],pts[j][1]]);
+            path = parent.pathItems.add(); path.setEntirePath(anchors);
+            for (j = 1000; j < pts.length; j++) {
+                var added = path.pathPoints.add(), at = [pts[j][0],pts[j][1]];
+                added.anchor = at; added.leftDirection = at; added.rightDirection = at;
+            }
+            path.closed = p.closed;
             for (j = 0; j < pts.length; j++) {
                 var q = pts[j];
                 if (q[0] === q[2] && q[0] === q[4] && q[1] === q[3] && q[1] === q[5]) continue;
