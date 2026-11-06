@@ -15,17 +15,39 @@ const VectorPathEffects = (() => {
     return out;
   }
   const fromInts = rings => rings.map(r=>G.polygon(r.map(p=>[p.X/scale,p.Y/scale])));
+  const joins={Round:"jtRound",Miter:"jtMiter",Bevel:"jtSquare"};
+  // Positive distances shrink the filled area; holes grow. Returns nonzero-oriented rings.
+  function shrink(rings,distance,join="Round") {
+    const offset=new C.ClipperOffset(3,0.18*scale), out=[];
+    offset.AddPaths(rings,C.JoinType[joins[join]],C.EndType.etClosedPolygon);
+    offset.Execute(out,-distance*scale);
+    return out;
+  }
+  function offsetRings(shape,distance,join="Round") {
+    return shrink(clip(contours(shape),null,shape.evenodd),distance,join).map(r=>r.map(p=>[p.X/scale,p.Y/scale]));
+  }
+  // Clips straight segments to a filled shape; returns the inside pieces as [[x,y],[x,y]].
+  function clipLines(shape,segments) {
+    const op=new C.Clipper(), tree=new C.PolyTree();
+    for (const s of segments) op.AddPath(intPath(s),C.PolyType.ptSubject,false);
+    op.AddPaths(contours(shape),C.PolyType.ptClip,true);
+    const fill=shape.evenodd ? C.PolyFillType.pftEvenOdd : C.PolyFillType.pftNonZero;
+    op.Execute(C.ClipType.ctIntersection,tree,C.PolyFillType.pftNonZero,fill);
+    return C.Clipper.OpenPathsFromPolyTree(tree).filter(p=>p.length>=2)
+      .map(p=>[p[0],p[p.length-1]].map(q=>[q.X/scale,q.Y/scale]));
+  }
   function inset(shapes,v) {
-    const result=[];
+    const result=[],K=VectorPaint,steps=v.steps||1,target=v.target ? K.hex(v.target) : null;
     for (const shape of shapes) {
-      const original=contours(shape);
+      contours(shape);
       if (!v.distance) { result.push(shape); continue; }
-      const offset=new C.ClipperOffset(3,0.18*scale);
-      const join={Round:C.JoinType.jtRound,Miter:C.JoinType.jtMiter,Bevel:C.JoinType.jtSquare};
-      offset.AddPaths(clip(original,null,shape.evenodd),join[v.join],C.EndType.etClosedPolygon);
-      const out=[];
-      offset.Execute(out,-v.distance*scale);
-      if (out.length) result.push({...shape,paths:fromInts(out),evenodd:false});
+      // Each step is a further ring, blended a step closer to the target colour.
+      for (let i=1;i<=steps;i++) {
+        const rings=offsetRings(shape,v.distance*i/steps,v.join),t=(v.blend||0)/100*i/steps;
+        if (!rings.length) break;
+        const painted=t ? K.changeInks(shape,c=>K.tint(c,target,t)) : shape;
+        result.push({...painted,paths:rings.map(G.polygon),evenodd:false});
+      }
     }
     if (!result.length) throw Error("The inset consumes the artwork. Reduce the distance or use a negative value to expand it.");
     return result;
@@ -49,7 +71,9 @@ const VectorPathEffects = (() => {
     return intPath(ring);
   }
   function shatter(shapes,v,b) {
-    const rand=G.random(v.seed), sites=[], result=[];
+    // Gravity and colour jitter draw from their own streams so earlier fractures are unchanged.
+    const rand=G.random(v.seed), fall=G.random(v.seed+104729), shade=G.random(v.seed+7919), sites=[], result=[];
+    const K=VectorPaint;
     const originals=shapes.map(contours);
     for (let i=0;i<v.pieces;i++) sites.push([b.x0+rand()*b.w,b.y0+rand()*b.h]);
     const center=[b.x0+b.w*v.cx/100,b.y0+b.h*v.cy/100],reach=4*Math.max(1,b.w,b.h);
@@ -67,11 +91,15 @@ const VectorPathEffects = (() => {
       const theta=(2*rand()-1)*v.spin*Math.PI/180;
       const dx=(site[0]-center[0])/(Math.max(1,b.w)/2)*v.spread;
       const dy=(site[1]-center[1])/(Math.max(1,b.h)/2)*v.spread;
+      const drop=v.gravity ? v.gravity*(0.5+0.5*fall()) : 0;
+      const jitter=v.jitter ? (2*shade()-1)*v.jitter/100 : 0;
+      const recolor=s=>jitter ? K.changeInks(s,c=>K.tint(c,jitter>0 ? K.white : K.ink,Math.abs(jitter)*0.6)) : s;
       const move=(x,y)=>[site[0]+dx+(x-site[0])*Math.cos(theta)-(y-site[1])*Math.sin(theta),
-        site[1]+dy+(x-site[0])*Math.sin(theta)+(y-site[1])*Math.cos(theta)];
+        site[1]+dy-drop+(x-site[0])*Math.sin(theta)+(y-site[1])*Math.cos(theta)];
       shapes.forEach((shape,i)=>{
-        const rings=clip(originals[i],mask,shape.evenodd);
-        if (rings.length) result.push({...shape,evenodd:false,paths:fromInts(rings).map(p=>G.mapPath(p,move))});
+        let rings=clip(originals[i],mask,shape.evenodd);
+        if (v.gap && rings.length) rings=shrink(rings,v.gap/2,"Miter");
+        if (rings.length) result.push(recolor({...shape,evenodd:false,paths:fromInts(rings).map(p=>G.mapPath(p,move))}));
       });
     }
     return result;
@@ -132,14 +160,23 @@ const VectorPathEffects = (() => {
     if (samples.some(([t,p])=>G.dist(G.at(curve,t),p)>tolerance)) return null;
     return curve.slice(1,3);
   }
-  function simplify(path,tolerance) {
+  // Degrees the path turns at an anchor, from its handles or, when retracted, its neighbours.
+  function turn(p,prev,next) {
+    const from=G.dist(p,G.incoming(p))>1e-6 ? G.incoming(p) : G.xy(prev);
+    const to=G.dist(p,G.outgoing(p))>1e-6 ? G.outgoing(p) : G.xy(next);
+    const d=Math.abs(Math.atan2(to[1]-p[1],to[0]-p[0])-Math.atan2(p[1]-from[1],p[0]-from[0]))*180/Math.PI;
+    return d>180 ? 360-d : d;
+  }
+  function simplify(path,tolerance,corners=0) {
     const pts=path.points.map(p=>p.slice()),min=path.closed ? 3 : 2;
     // Disjoint pairs per pass bound accumulated fitting error.
     let budget=tolerance;
     for (let pass=0;pass<5 && pts.length>min;pass++,budget/=2) {
       let changed=false;
       for (let i=1;i<(path.closed ? pts.length : pts.length-1) && pts.length>min;i++) {
-        const a=pts[i-1],c=pts[(i+1)%pts.length],fit=fitPair(a,pts[i],c,budget/2);
+        const a=pts[i-1],c=pts[(i+1)%pts.length];
+        if (corners && turn(pts[i],a,c)>=corners) continue;
+        const fit=fitPair(a,pts[i],c,budget/2);
         if (!fit) continue;
         a.splice(4,2,...fit[0]);c.splice(2,2,...fit[1]);pts.splice(i,1);changed=true;
       }
@@ -147,5 +184,5 @@ const VectorPathEffects = (() => {
     }
     return {closed:path.closed,points:pts};
   }
-  return {inset,shatter,point,simplify};
+  return {inset,offsetRings,clipLines,shatter,point,simplify};
 })();

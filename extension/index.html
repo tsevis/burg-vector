@@ -6,22 +6,84 @@
   <title>Burg Vector</title><link rel="stylesheet" href="panel.css">
 </head>
 <body>
-<main>
-  <header><h1>Burg Vector</h1></header>
-  <label class="section-title" for="effect">Effect</label>
-  <select id="effect"></select>
-  <div class="stage">
-    <div class="canvas"><svg id="preview" aria-label="Effect preview" role="img" xmlns="http://www.w3.org/2000/svg"></svg><div id="prompt" hidden></div></div>
+<div class="frame">
+  <header class="masthead">
+    <div class="emblem" aria-hidden="true">
+      <svg viewBox="0 0 40 40"><path d="M11 9h11a7 7 0 0 1 2.8 13.4A7.5 7.5 0 0 1 22.5 31H11z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/><path d="M6 33L34 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+    </div>
+    <div class="brand"><span>Burg</span> Vector</div>
+    <label class="plaque" title="Choose an effect"><span id="effect-name">3D Transform</span><select id="effect" aria-label="Effect"></select></label>
+  </header>
+
+  <nav class="modes" aria-label="Mode">
+    <button id="mode-tweak" class="mode" type="button" aria-pressed="true">Tweak</button>
+    <button id="mode-explore" class="mode" type="button" aria-pressed="false">Explore</button>
+    <button id="options" class="options" type="button" aria-haspopup="dialog">Options ▾</button>
+  </nav>
+
+  <section class="well" aria-label="Preview">
+    <div class="tools">
+      <button id="presets-btn" class="orb" type="button" title="Presets" aria-expanded="false"><svg viewBox="0 0 16 16"><path d="M3.5 5.5h9L8 11z"/></svg></button>
+      <button id="vary" class="orb" type="button" title="Vary: preview a small mutation"><svg viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="6" r="1.2"/><circle cx="10" cy="10" r="1.2"/><circle cx="10" cy="6" r="1.2"/><circle cx="6" cy="10" r="1.2"/></svg></button>
+      <span class="tools-gap"></span>
+      <button id="zoom-out" class="orb" type="button" title="Zoom out"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 7h4M10.2 10.2l3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+      <button id="zoom-in" class="orb" type="button" title="Zoom in"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 7h4M7 5v4M10.2 10.2l3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+      <button id="pan" class="orb" type="button" title="Hand: drag to pan, double-click to fit" aria-pressed="false"><svg viewBox="0 0 16 16"><path d="M5 9V4.2a1 1 0 0 1 2 0V8m0-4.8V3a1 1 0 0 1 2 0v5m0-4.6a1 1 0 0 1 2 0V8.5m0-3a1 1 0 0 1 2 0V10c0 2.8-1.9 4.5-4.4 4.5-1.9 0-3-.9-4-2.4L3 9.6a1 1 0 0 1 1.7-1z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></button>
+    </div>
+    <div class="canvas" id="canvas">
+      <svg id="preview" aria-label="Effect preview" role="img" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div id="explore" class="explore" hidden></div>
+      <div id="prompt" hidden></div>
+    </div>
     <div class="stage-bar"><span id="source">Sample artwork</span><button id="compare" aria-pressed="false" type="button">Show original</button></div>
-  </div>
-  <div class="preset-row"><label for="preset">Preset</label><select id="preset"></select><button id="vary" type="button" title="Preview a small variation of these settings">Vary</button><button id="save" type="button" title="Save the current settings for this effect">Save</button></div>
-  <div id="controls"></div>
-</main>
-<footer>
-  <div class="placement"><label for="placement">Create result</label><select id="placement"><option value="beside">Beside original</option><option value="above">Over original</option></select></div>
-  <button id="apply" type="button" disabled>Create vector artwork</button>
-  <div id="status" role="status" aria-live="polite">Select artwork in Illustrator to apply the effect.</div>
-</footer>
+  </section>
+
+  <div id="explore-bar" class="explore-bar" hidden></div>
+
+  <section id="drawer" class="drawer" hidden aria-label="Presets">
+    <div id="preset-list" class="preset-list"></div>
+    <form id="save-form" class="save-form"><input id="preset-name" type="text" maxlength="40" placeholder="Name this preset" aria-label="Preset name"><button type="submit" class="pill small">Add</button></form>
+  </section>
+
+  <main id="controls" class="controls"></main>
+
+  <footer>
+    <div class="placement"><label for="placement">Create</label><select id="placement"><option value="beside">Beside original</option><option value="above">Over original</option></select></div>
+    <div class="glyphs">
+      <button id="help" class="glyph" type="button" title="How the controls work" aria-label="Help"><svg viewBox="0 0 24 24"><path d="M9.3 9.2a2.8 2.8 0 1 1 4 2.6c-.9.5-1.3 1-1.3 2v.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.2"/></svg></button>
+      <span class="glyphs-gap"></span>
+      <button id="save" class="glyph" type="button" title="Add a preset" aria-label="Add preset"><svg viewBox="0 0 24 24"><path d="M12 7v10M7 12h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button id="remove" class="glyph" type="button" title="Remove the selected preset" aria-label="Remove preset" disabled><svg viewBox="0 0 24 24"><path d="M7 12h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button id="reset" class="glyph" type="button" title="Reset to the default settings" aria-label="Reset"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5.6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7.6 16.4l8.8-8.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button id="apply" class="glyph apply" type="button" title="Create vector artwork" aria-label="Create vector artwork" disabled><svg viewBox="0 0 24 24"><path d="M6.5 12.5l3.6 3.6 7.4-8.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+    <div id="status" role="status" aria-live="polite">Select artwork in Illustrator to apply the effect.</div>
+  </footer>
+</div>
+
+<dialog id="prefs" class="prefs" aria-labelledby="prefs-title">
+  <form method="dialog">
+    <h2 id="prefs-title">General preferences</h2>
+    <label class="check"><input type="checkbox" name="realtime"> Real-time preview</label>
+    <label class="check"><input type="checkbox" name="restore"> Launch to previous state</label>
+    <label class="check"><input type="checkbox" name="graphical"> Graphical presets</label>
+    <label class="check"><input type="checkbox" name="numeric"> Numeric display</label>
+    <label class="check"><input type="checkbox" name="large"> Large controls</label>
+    <h2>Preview background</h2>
+    <div class="radios">
+      <label><input type="radio" name="background" value="black"> Black</label>
+      <label><input type="radio" name="background" value="white"> White</label>
+      <label><input type="radio" name="background" value="gray"> Gray</label>
+      <label><input type="radio" name="background" value="checker"> Checkerboard</label>
+      <label><input type="radio" name="background" value="custom"> Other color <input type="color" name="backgroundColor" aria-label="Other background color"></label>
+    </div>
+    <div class="prefs-buttons"><button value="cancel" class="pill small" type="submit">Cancel</button><button value="ok" class="pill small accent" type="submit">OK</button></div>
+  </form>
+</dialog>
+
 <script src="vendor/clipper.js"></script><script src="catalog.js"></script><script src="geometry.js"></script>
-<script src="path-effects.js"></script><script src="effects.js"></script><script src="panel.js"></script>
+<script src="paint.js"></script><script src="path-effects.js"></script><script src="extrude.js"></script>
+<script src="light-effects.js"></script><script src="sketch.js"></script><script src="effects.js"></script>
+<script src="explore.js"></script><script src="render.js"></script><script src="widgets.js"></script>
+<script src="settings.js"></script><script src="stage.js"></script><script src="panel.js"></script>
 </body></html>
