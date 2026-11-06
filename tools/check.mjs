@@ -58,9 +58,15 @@ const open={...rect,paths:[{...polygon,closed:false}],fill:null,stroke:[0,0,0],w
 for (const id of ["shatter","inset","extrude"]) assert.throws(()=>run(id,[open],{}),/closed/i);
 for (const e of catalog.filter(e=>!["shatter","inset","extrude"].includes(e.id)))
   assert.ok(run(e.id,[open],{}).length);
+for (const s of run("neon",source,{glow:100,bands:16}))
+  assert.ok(s.opacity>=0 && s.opacity<=100,"Neon opacity "+s.opacity);
+const ringOf=n=>({...rect,paths:[G.polygon(Array.from({length:n},(_,i)=>[100*Math.cos(i*2*Math.PI/n),100*Math.sin(i*2*Math.PI/n)]))]});
+assert.throws(()=>run("color",[ringOf(32001)],{}),/32,000/,"Preview accepts a contour Illustrator rejects");
 console.log("13/13 effects and presets passed geometry checks. Verified inset, compound holes, shatter area, open paths, source preservation and anchor editing.");
 
 if (process.argv.includes("--illustrator")) {
+  cases.push({name:"Neon full glow",result:run("neon",source,{glow:100,bands:16})});
+  cases.push({name:"1,500-anchor contour",result:run("color",[ringOf(1500)],{})});
   cases.push({name:"3,600 pt extrusion",result:run("extrude",source,{rx:180,ry:60,rz:91,depth:3600,perspective:85,light:-56})});
   const temp=mkdtempSync(join(tmpdir(),"vector-effects-qa-"));
   const script=join(temp,"suite.jsx"), apple=join(temp,"run.applescript");

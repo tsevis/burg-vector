@@ -152,7 +152,7 @@ const VectorEffects = (() => {
     for (const s of shapes) {
       if (s.fill) out.push({...s,stroke:null});
       const c=s.stroke||base(s);
-      const band=(width,stroke,opacity)=>({...s,fill:null,stroke,width,opacity:s.opacity*opacity,
+      const band=(width,stroke,opacity)=>({...s,fill:null,stroke,width,opacity:s.opacity*Math.min(1,opacity),
         cap:"round",join:"round",dash:[]});
       for (let i=v.bands;i>0;i--) {
         const t=i/v.bands;
@@ -203,7 +203,11 @@ const VectorEffects = (() => {
     }
     const out=effects[id](shapes,v,G.bounds(shapes));
     let anchors=0;
-    for (const s of out) for (const p of s.paths) anchors+=p.points.length;
+    for (const s of out) for (const p of s.paths) {
+      // Illustrator accepts 32,000 anchors per path; host.jsx enforces the same limit.
+      if (p.points.length>32000) throw Error("A result path exceeds 32,000 anchors, Illustrator's limit. Reduce detail or simplify the source.");
+      anchors+=p.points.length;
+    }
     if (out.length>1800 || anchors>40000) throw Error("Result exceeds 40,000 anchors or 1,800 objects. Reduce detail or select less artwork.");
     if (!anchors) throw Error("The settings produce an empty result.");
     return out;

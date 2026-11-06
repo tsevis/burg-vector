@@ -18,7 +18,7 @@ Version **0.2.4** targets desktop Illustrator **2026 (30.x)** and Adobe’s CEP 
 ### macOS
 
 1. Open Creative Cloud Desktop and sign in.
-2. In the extracted folder, double-click **Install Burg Vector.command**. Keep it next to **Burg Vector.zxp**.
+2. In the extracted folder, double-click **Install Burg Vector.command**. Keep it next to **Burg Vector.zxp**. If macOS blocks it because the developer cannot be verified, open **System Settings → Privacy & Security**, click **Open Anyway** for the installer, and confirm.
 3. After the installer reports success, restart Illustrator and choose **Window → Extensions → Burg Vector**.
 
 ### Windows x64
@@ -70,7 +70,7 @@ Each pair shows the same three selected objects. Click any screenshot to inspect
 | Warp Frame | Taper a design with four corner handles, then bow each edge independently. |
 | Vector Distort | Apply Swirl, Spherize, Pinch, Rotate, Magnify, Zig, Zag or ZigZag around a movable center. |
 | Fracture | Cut closed shapes into cells or radial fragments. Set the impact center, separation and rotation. |
-| Inset | Offset an outline inward or outward, including the holes in compound paths. Choose round, miter or square joins. |
+| Inset | Offset an outline inward or outward, including the holes in compound paths. Choose round, miter or bevel joins. |
 | Point Editor | Move an anchor or either Bézier handle, subdivide a segment, or switch a point between smooth and corner. |
 | Simplify | Reduce anchor count. A lower curve tolerance keeps the result closer to the source contour. |
 | Sketch | Trace paths with repeatable, slightly irregular pen strokes. Control roughness, passes, width and seed. |
@@ -86,7 +86,7 @@ Each effect has a built-in alternate preset. **Vary** previews a small change to
 
 - **Paths and color.** Select painted paths, compound paths or ordinary groups with solid RGB, CMYK or grayscale fills or strokes. Outline live type, expand brushes and complex appearances, and release clipping masks before selecting the artwork. Convert spot, gradient or pattern paint to solid colors where needed.
 - **Closed shapes.** 3D Transform, Inset and Fracture need closed, filled paths. Inset and Fracture approximate curves with line segments when calculating offsets and intersections.
-- **Complex selections.** Work in batches of up to 150 painted objects and 6,000 source anchors. If a result exceeds 1,800 objects or 40,000 anchors, reduce the detail or select fewer objects.
+- **Complex selections.** Work in batches of up to 150 painted objects and 6,000 source anchors. If a result exceeds 1,800 objects or 40,000 anchors, or a single path exceeds Illustrator’s limit of 32,000 anchors, reduce the detail or select fewer objects.
 - **Editing afterward.** Keep the original if you want to revisit settings. The result is an expanded group of Illustrator paths. A new selection immediately replaces the panel preview, and deselecting clears it.
 
 ## Development and credits
