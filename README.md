@@ -8,7 +8,7 @@ Burg Vector brings thirteen vector effects to Adobe Illustrator 2026. Select art
 
 ## Installation
 
-Version **0.2.4** targets desktop Illustrator **2026 (30.x)** and Adobe’s CEP 12 panel runtime. The signed extension is [Burg Vector.zxp](Burg%20Vector.zxp). For macOS, choose **Code → Download ZIP** on the repository home page and extract the archive. For Windows, use the installer ZIP below.
+Version **0.2.5** targets desktop Illustrator **2026 (30.x)** and Adobe’s CEP 12 panel runtime. The signed extension is [Burg Vector.zxp](Burg%20Vector.zxp). For macOS, choose **Code → Download ZIP** on the repository home page and extract the archive. For Windows, use the installer ZIP below.
 
 | Platform | Status |
 | --- | --- |
@@ -23,11 +23,11 @@ Version **0.2.4** targets desktop Illustrator **2026 (30.x)** and Adobe’s CEP 
 
 ### Windows x64
 
-**[Download the Windows installer for Burg Vector 0.2.4 (ZIP)](https://github.com/tsevis/burg-vector/releases/download/v0.2.4/Burg-Vector-0.2.4-Windows.zip)**
+**[Download the Windows installer for Burg Vector 0.2.5 (ZIP)](https://github.com/tsevis/burg-vector/releases/download/v0.2.5/Burg-Vector-0.2.5-Windows.zip)**
 
 1. Install Illustrator 2026 (30.x) and sign in to Creative Cloud Desktop.
 2. Right-click the downloaded ZIP and choose **Extract All**. Open the extracted folder and double-click **Install Burg Vector.cmd**. Keep **Burg Vector.zxp** alongside it.
-3. Wait for **Burg Vector 0.2.4 is installed**. Save your work, restart Illustrator, and choose **Window → Extensions → Burg Vector**.
+3. Wait for **Burg Vector 0.2.5 is installed**. Save your work, restart Illustrator, and choose **Window → Extensions → Burg Vector**.
 4. Select a filled rectangle, choose **3D Transform**, and click **Create vector artwork**. A new group beside the rectangle confirms the panel can read and write artwork in Illustrator.
 
 The installer calls Adobe’s Unified Plugin Installer Agent and checks that Creative Cloud lists the installed version. If it cannot find the Adobe installer, open or update Creative Cloud Desktop, sign in, and try again. If Adobe reports an error, its message stays in the installer window until you press a key. [Adobe’s installation instructions](https://helpx.adobe.com/creative-cloud/apps/integration-with-other-apps/manage-plugins/install-plugins-using-upia-tool.html)
