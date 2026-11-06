@@ -103,4 +103,6 @@ On a Mac with Illustrator installed, `node tools/check.mjs --illustrator` also c
 
 Burg Vector is an independent implementation inspired by KPT Vector Effects 1.5. It recreates filter workflows with editable output. Legacy presets, Appearance-panel live effects, 3D bevels and metallic materials are outside this version. The original software and manual are excluded from the distribution. The project is unaffiliated with the original publisher, Corel or Adobe.
 
+I have deep respect for Kai Krause and admire the way his tools invite artists to experiment. I still believe his work is as relevant today as ever, and I hope Burg Vector gives artists that same urge to try one more variation.
+
 The extension includes the Clipper geometry library and its JSBN component. [Third-party notices](extension/vendor/LICENSES.txt)
