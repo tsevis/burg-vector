@@ -1,14 +1,18 @@
 # Burg Vector
 
-Burg Vector brings thirteen vector effects to Adobe Illustrator 2026. Select artwork to see it in the panel, adjust the effect, then create a group of editable paths. The blue block and white figure below were extruded together. The long white ridges are the side walls of the figure itself.
+An Illustrator panel with thirteen vector effects — extrude, warp, fracture, inset, sketch, glow and more — whose results are always plain, editable paths. A homage to **KPT Vector Effects**, Kai Krause’s plug-ins that once turned Illustrator into a playground.
+
+Select artwork and the panel previews it live. Move a slider, drag a handle, press **Vary** for a surprise, then **Create vector artwork**. Nothing is a live effect or a raster: the result is a group of ordinary paths you can recolour, ungroup and keep editing. The blue block and white figure below were extruded together; the long white ridges are the side walls of the figure itself.
 
 ![A white figure and blue rectangle extruded together, with the figure’s outline forming long ridges across the block](screenshots/Screenshot%202026-11-06%20at%2018.15.02.png)
 
-[Install Burg Vector](#installation) · [Try the pictured extrusion](#try-the-pictured-extrusion) · [Screenshot gallery](#one-figure-six-effects) · [All 13 effects](#effect-guide)
+**Status: in use on macOS.** All thirteen effects are tested end to end in Illustrator 30.8.2: each result is written into a real document, read back and compared anchor by anchor and handle by handle. The Windows installer is built but has not yet been tried with Illustrator on Windows. Free and open source under the [MIT License](LICENSE).
+
+[Install Burg Vector](#installation) · [Try the pictured extrusion](#try-the-pictured-extrusion) · [Screenshot gallery](#one-figure-six-effects) · [All 13 effects](#effect-guide) · [Why this exists](#why-this-exists)
 
 ## Installation
 
-Version **0.2.5** targets desktop Illustrator **2026 (30.x)** and Adobe’s CEP 12 panel runtime. The signed extension is [Burg Vector.zxp](Burg%20Vector.zxp). For macOS, choose **Code → Download ZIP** on the repository home page and extract the archive. For Windows, use the installer ZIP below.
+Version **0.2.1** targets desktop Illustrator **2026 (30.x)** and Adobe’s CEP 12 panel runtime. The signed extension is [Burg Vector.zxp](Burg%20Vector.zxp). For macOS, choose **Code → Download ZIP** on the repository home page and extract the archive. For Windows, use the installer ZIP below.
 
 | Platform | Status |
 | --- | --- |
@@ -23,11 +27,11 @@ Version **0.2.5** targets desktop Illustrator **2026 (30.x)** and Adobe’s CEP 
 
 ### Windows x64
 
-**[Download the Windows installer for Burg Vector 0.2.5 (ZIP)](https://github.com/tsevis/burg-vector/releases/download/v0.2.5/Burg-Vector-0.2.5-Windows.zip)**
+**[Download the Windows installer for Burg Vector 0.2.1 (ZIP)](https://github.com/tsevis/burg-vector/releases/download/v0.2.1/Burg-Vector-0.2.1-Windows.zip)**
 
 1. Install Illustrator 2026 (30.x) and sign in to Creative Cloud Desktop.
 2. Right-click the downloaded ZIP and choose **Extract All**. Open the extracted folder and double-click **Install Burg Vector.cmd**. Keep **Burg Vector.zxp** alongside it.
-3. Wait for **Burg Vector 0.2.5 is installed**. Save your work, restart Illustrator, and choose **Window → Extensions → Burg Vector**.
+3. Wait for **Burg Vector 0.2.1 is installed**. Save your work, restart Illustrator, and choose **Window → Extensions → Burg Vector**.
 4. Select a filled rectangle, choose **3D Transform**, and click **Create vector artwork**. A new group beside the rectangle confirms the panel can read and write artwork in Illustrator.
 
 The installer calls Adobe’s Unified Plugin Installer Agent and checks that Creative Cloud lists the installed version. If it cannot find the Adobe installer, open or update Creative Cloud Desktop, sign in, and try again. If Adobe reports an error, its message stays in the installer window until you press a key. [Adobe’s installation instructions](https://helpx.adobe.com/creative-cloud/apps/integration-with-other-apps/manage-plugins/install-plugins-using-upia-tool.html)
@@ -89,9 +93,17 @@ Each effect has a built-in alternate preset. **Vary** previews a small change to
 - **Complex selections.** Work in batches of up to 150 painted objects and 6,000 source anchors. If a result exceeds 1,800 objects or 40,000 anchors, or a single path exceeds Illustrator’s limit of 32,000 anchors, reduce the detail or select fewer objects.
 - **Editing afterward.** Keep the original if you want to revisit settings. The result is an expanded group of Illustrator paths. A new selection immediately replaces the panel preview, and deselecting clears it.
 
-## Development and credits
+## Why this exists
 
-The panel runs offline. The [effect catalog](extension/catalog.js) defines the controls. [effects.js](extension/effects.js) and [path-effects.js](extension/path-effects.js) generate the geometry used for both the preview and the Illustrator result. The [host script](extension/host.jsx) checks the selection again before writing and removes a partially created group if a write fails.
+There was a time when creative software had a personality. Kai’s Power Tools, Bryce, Goo and their siblings did not hide their controls in dialogs; they put them on glowing spheres and odd little dials, and they made you want to play before you knew what you were making. KPT Vector Effects brought that spirit to Illustrator in the late 1990s: 3D extrusions, warps, shatters, glows and shadows, all still vector.
+
+Those plug-ins stopped running long ago, but the feeling they gave never quite went away — the pleasure of nudging a slider, pressing a button for a random variation, and getting something you would not have drawn yourself. Burg Vector is written out of that nostalgia. It does not copy the old interface or reuse any of its code; it rebuilds the idea for today’s Illustrator, with one rule the old filters already followed: whatever you make stays editable vector artwork.
+
+I have deep respect for Kai Krause and admire the way his tools invite artists to experiment. I still believe his work is as relevant today as ever, and I hope Burg Vector gives artists that same urge to try one more variation.
+
+## Development
+
+The panel runs offline. The [effect catalog](extension/catalog.js) defines the controls. [effects.js](extension/effects.js) and [path-effects.js](extension/path-effects.js) generate the geometry used for both the preview and the Illustrator result, so what you see is what gets written. The [host script](extension/host.jsx) checks the selection again before writing and removes a partially created group if a write fails.
 
 From the repository directory, run the geometry checks with Node.js 20 or later:
 
@@ -99,10 +111,10 @@ From the repository directory, run the geometry checks with Node.js 20 or later:
 node tools/check.mjs
 ```
 
-On a Mac with Illustrator installed, `node tools/check.mjs --illustrator` also creates results in temporary Illustrator documents and checks the paths it reads back. To sign a new ZXP, set `ZXP_PASSWORD` for your signing identity and run `tools/package.sh /path/to/ZXPSignCmd /path/to/identity.p12 output.zxp`.
+On a Mac with Illustrator installed, `node tools/check.mjs --illustrator` also creates every effect in temporary Illustrator documents and checks the paths it reads back. To sign a new ZXP, set `ZXP_PASSWORD` for your signing identity, optionally set `ZXP_TSA` to a timestamp server, and run `tools/package.sh /path/to/ZXPSignCmd /path/to/identity.p12 output.zxp`.
 
-Burg Vector is an independent implementation inspired by KPT Vector Effects 1.5. It recreates filter workflows with editable output. Legacy presets, Appearance-panel live effects, 3D bevels and metallic materials are outside this version. The original software and manual are excluded from the distribution. The project is unaffiliated with the original publisher, Corel or Adobe.
+## Credits and license
 
-I have deep respect for Kai Krause and admire the way his tools invite artists to experiment. I still believe his work is as relevant today as ever, and I hope Burg Vector gives artists that same urge to try one more variation.
+Burg Vector is an independent implementation inspired by KPT Vector Effects 1.5. Legacy presets, Appearance-panel live effects, 3D bevels and metallic materials are outside this version. The original software and manual are not part of this repository. The project is unaffiliated with the original publishers, Corel or Adobe.
 
-The extension includes the Clipper geometry library and its JSBN component. [Third-party notices](extension/vendor/LICENSES.txt)
+Released under the [MIT License](LICENSE). The extension includes the Clipper geometry library and its JSBN component under their own licenses. [Third-party notices](extension/vendor/LICENSES.txt)
