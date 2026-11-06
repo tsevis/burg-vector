@@ -9,7 +9,7 @@ import vm from "node:vm";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"..");
 const js=vm.createContext({console,navigator:{userAgent:""},window:{}});
 js.window=js; js.self=js;
-for (const file of ["vendor/clipper.js","catalog.js","geometry.js","path-effects.js","effects.js"])
+for (const file of ["vendor/clipper.js","catalog.js","geometry.js","paint.js","path-effects.js","extrude.js","light-effects.js","sketch.js","effects.js","explore.js"])
   vm.runInContext(readFileSync(join(root,"extension",file),"utf8"),js,{filename:file});
 const {catalog,G,run}=vm.runInContext("({catalog:VectorCatalog,G:VectorGeometry,run:VectorEffects.run})",js);
 const ring={paths:[G.circle(50,50,40),G.circle(50,50,12)],fill:[228,80,50],stroke:null,width:0,opacity:100,evenodd:true};
@@ -62,10 +62,109 @@ for (const s of run("neon",source,{glow:100,bands:16}))
   assert.ok(s.opacity>=0 && s.opacity<=100,"Neon opacity "+s.opacity);
 const ringOf=n=>({...rect,paths:[G.polygon(Array.from({length:n},(_,i)=>[100*Math.cos(i*2*Math.PI/n),100*Math.sin(i*2*Math.PI/n)]))]});
 assert.throws(()=>run("color",[ringOf(32001)],{}),/32,000/,"Preview accepts a contour Illustrator rejects");
+// 3D Transform: axis origin, bevel, metallic and light colours.
+const flat3d={rx:0,ry:0,rz:0,perspective:0};
+const pivot=G.bounds(run("extrude",only,{...flat3d,rz:90,depth:0,cx:0,cy:0}));
+assert.ok(Math.abs(pivot.x1-box.x0)<0.001 && Math.abs(pivot.y0-box.y0)<0.001,"Axis origin pivots at the lower left");
+const beveled=run("extrude",only,{...flat3d,depth:0,bevel:4,bevelDepth:6});
+const cap=G.bounds([beveled[beveled.length-1]]);
+assert.ok(Math.abs(cap.w-(box.w-8))<0.01 && Math.abs(cap.h-(box.h-8))<0.01,"Bevel cap is inset by the bevel size");
+assert.ok(beveled.length>1,"Bevel adds facets");
+const ringCap=run("extrude",[ring],{bevel:3,depth:20});
+assert.equal(ringCap[ringCap.length-1].paths.length,2,"Bevel cap keeps compound holes");
+assert.ok(run("extrude",[ring],{bevel:6,complexity:10,depth:40}).length<=1800,"Rounded bevel stays within object limit");
+const wallColors=o=>JSON.stringify(run("extrude",only,{ry:40,depth:40,...o}).map(s=>s.fill));
+assert.notEqual(wallColors({metallic:0}),wallColors({metallic:100}),"Metallic changes wall shading");
+assert.notEqual(wallColors({highlight:"#ff0000"}),wallColors({highlight:"#ffffff"}),"Highlight colour tints lit faces");
+assert.notEqual(wallColors({ambient:"#0000ff"}),wallColors({ambient:"#14131c"}),"Ambient colour tints shadowed faces");
+assert.throws(()=>run("extrude",only,{highlight:"red"}),/Highlight/,"Colour controls validate hex");
+// A contour the bevel consumes must not be bridged to another contour.
+const island={...rect,paths:[G.polygon([[0,0],[100,0],[100,100],[0,100]]),G.circle(300,50,3)]};
+const facets=run("extrude",[island],{...flat3d,depth:0,bevel:10}).flatMap(s=>s.paths);
+assert.ok(facets.every(p=>G.bounds([{paths:[p]}]).w<150),"Vanished contour streaks across the artwork");
+// One shape too small for the bevel keeps a flat face; the rest still bevel.
+const mixed=run("extrude",[rect,{...rect,paths:[G.circle(200,50,3)]}],{...flat3d,depth:0,bevel:10});
+assert.ok(mixed.length>2,"A small shape blocks the whole selection");
+// Enriched effects.
+const square={...rect,paths:[G.polygon([[0,0],[100,0],[100,100],[0,100]])]};
+const hexRGB=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const near=(a,b,tol=1.01)=>a.slice(0,3).every((v,i)=>Math.abs(v-b[i])<=tol);
+const areaOf=list=>list.reduce((sum,s)=>sum+Math.abs(s.paths.reduce((a,p)=>a+area(p),0)),0);
+// Shadow Echo: modes and shadow colour.
+const shadowJSON=o=>JSON.stringify(run("shadow",[square],{length:80,angle:0,steps:4,...o}));
+const castBox=G.bounds([run("shadow",[square],{mode:"Cast",length:80,angle:30,steps:1})[0]]);
+assert.ok(castBox.y0>-0.01 && castBox.y1<99 && castBox.x1>140,"Cast shadow leans along the ground from the base");
+assert.notEqual(shadowJSON({mode:"Drop"}),shadowJSON({mode:"Echo"}),"Drop differs from Echo");
+const drop=run("shadow",[square],{mode:"Drop",steps:4});
+const dropX=50+22*Math.cos(-42*Math.PI/180);
+assert.ok(drop.slice(0,4).every(s=>Math.abs(G.bounds([s]).cx-dropX)<0.01),"Drop copies share one offset");
+assert.ok(drop.length===5 && near(drop[0].fill,hexRGB("#14131c").map((c,i)=>Math.round(rect.fill[i]+(c-rect.fill[i])*0.72))),"Drop shadow copies take the shadow colour");
+assert.ok(near(run("shadow",[square],{color:"#0000ff",tint:100})[0].fill,[0,0,255]),"Shadow colour at full tint");
+// Inset: stepped rings blending to a target colour.
+const rings=run("inset",[square],{distance:30,steps:3,target:"#ffffff",blend:100});
+assert.equal(rings.length,3,"Inset steps");
+assert.ok(near(rings[2].fill,[255,255,255]) && Math.abs(G.bounds([rings[2]]).w-40)<0.01,"Innermost ring reaches the target colour and full distance");
+// Emboss: colours and soft bands.
+assert.equal(run("emboss",[square],{softness:3}).length,7,"Emboss softness bands");
+assert.ok(near(run("emboss",[square],{highlight:"#ff0000",contrast:100})[1].fill,[255,0,0]),"Emboss highlight colour");
+// Fracture: grout gaps, gravity, colour jitter.
+const whole=areaOf(run("shatter",[square],{spread:0,spin:0}));
+assert.ok(areaOf(run("shatter",[square],{spread:0,spin:0,gap:4}))<whole*0.9,"Fracture gap opens grout lines");
+assert.ok(G.bounds(run("shatter",[square],{spread:0,spin:0,gravity:120})).y0<-60,"Fracture gravity drops pieces");
+const jittered=new Set(run("shatter",[square],{jitter:80}).map(s=>s.fill.join()));
+assert.ok(jittered.size>3,"Fracture colour jitter varies fragments");
+// Vector Distort: Ripple and Wobble lenses.
+const lensJSON=lens=>JSON.stringify(run("distort",[square],{lens,strength:80}));
+assert.ok(new Set(["Pinch","Ripple","Wobble"].map(lensJSON)).size===3,"Ripple and Wobble are lenses of their own");
+const soft=JSON.stringify(run("distort",[square],{lens:"Spherize"})), hard=JSON.stringify(run("distort",[square],{lens:"Spherize",hardness:90}));
+assert.notEqual(soft,hard,"Distort edge hardness changes the falloff");
+// Warp Frame: shapes.
+const flatWarp={tlx:0,trx:0,try:0,bry:0};
+const arc=G.bounds(run("warp",[square],{...flatWarp,shape:"Arc",bend:60}));
+assert.ok(arc.y1>110,"Arc lifts the top");
+for (const shape of ["Bulge","Wave","Flag","Twist"])
+  assert.notEqual(JSON.stringify(run("warp",[square],{...flatWarp,shape})),JSON.stringify(run("warp",[square],flatWarp)),shape+" warps");
+// Neon: custom tube and glow colours.
+const tubes=run("neon",[square],{colors:"Custom",tube:"#00ff00",glowColor:"#0000ff"});
+assert.ok(near(tubes[1].stroke,[0,0,255]) && near(tubes[tubes.length-1].stroke,[255,252,246]) && near(tubes[tubes.length-2].stroke,[0,255,0]),"Neon custom colours");
+// Flare: lens rings, colour and ray jitter.
+assert.equal(run("flare",[square],{rings:4}).length-run("flare",[square],{}).length,4,"Flare lens rings");
+assert.ok(near(run("flare",[square],{colors:"Custom",flareColor:"#00ff00"})[1].fill,[0,255,0]),"Flare colour");
+assert.notEqual(JSON.stringify(run("flare",[square],{jitter:80})),JSON.stringify(run("flare",[square],{})),"Flare ray jitter");
+// Sketch: hatching stays inside the shape.
+const hatched=run("sketch",[square],{hatch:"Cross-hatch",spacing:10,rough:0});
+const lines=hatched.filter(s=>s.paths.every(p=>!p.closed && p.points.length===2));
+assert.equal(lines.length,2,"Cross-hatch draws two directions");
+for (const s of lines) for (const p of s.paths) { assert.ok(!p.closed); const lb=G.bounds([{paths:[p]}]); assert.ok(lb.x0>-0.01 && lb.x1<100.01 && lb.y0>-0.01 && lb.y1<100.01,"Hatch inside shape"); }
+// Color Shift: colorize, posterize, per-object randomize.
+const blueish=run("color",[{...square,fill:[228,80,50]}],{hue:0,sat:0,colorize:100,target:"#3562a0"})[0].fill;
+assert.ok(blueish[2]>blueish[0]+40,"Colorize moves toward the target hue");
+assert.ok(run("color",[square],{hue:0,sat:0,posterize:2})[0].fill.every(c=>c===0||c===255),"Posterize to two levels");
+const many=[0,1,2,3,4].map(i=>({...square,paths:[G.circle(i*30,0,10)]}));
+assert.ok(new Set(run("color",many,{hue:0,sat:0,random:100}).map(s=>s.fill.join())).size>2,"Randomize varies objects");
+// Simplify: keep corners.
+const notch=G.polygon([[0,0],[10,0],[20,0],[20,10],[20,20],[10,20],[0,20],[0,10]]);
+const kept=run("simplify",[{...rect,paths:[notch]}],{error:20,corners:60})[0].paths[0].points.length;
+assert.ok(kept>=4,"Simplify keeps the square's corners");
+// Explore mutations must stay inside each control's range and step, or run() rejects them.
+const X=vm.runInContext("VectorExplore",js), rng=G.random(5);
+for (const e of catalog) for (let i=0;i<60;i++) {
+  const start=Object.fromEntries(e.controls.map(c=>[c.key,c.value]));
+  const child=X.mutate(e,start,i%2 ? 1 : 0.1,rng);
+  assert.notEqual(JSON.stringify(child),JSON.stringify(start),e.name+" mutation changes something");
+  for (const c of e.controls.filter(c=>!c.options && !c.color))
+    assert.ok(Math.abs(Math.round((child[c.key]-c.min)/c.step)*c.step+c.min-child[c.key])<1e-9,e.name+" "+c.key+" off step");
+  try { run(e.id,source,child); } catch (err) { assert.doesNotMatch(err.message,/^(Check|Unknown)/,e.name+" mutation out of range"); }
+}
 console.log("13/13 effects and presets passed geometry checks. Verified inset, compound holes, shatter area, open paths, source preservation and anchor editing.");
 
 if (process.argv.includes("--illustrator")) {
+  cases.push({name:"Bevelled metallic 3D",result:run("extrude",source,{bevel:4,complexity:6,metallic:70,depth:60,cx:20,highlight:"#ffe0a0",ambient:"#102040"})});
   cases.push({name:"Neon full glow",result:run("neon",source,{glow:100,bands:16})});
+  cases.push({name:"Cross-hatch sketch",result:run("sketch",source,{hatch:"Cross-hatch",spacing:4})});
+  cases.push({name:"Fracture with grout and gravity",result:run("shatter",source,{gap:2,gravity:40,jitter:60})});
+  cases.push({name:"Drop shadow, stepped inset, Ripple",result:[...run("shadow",source,{mode:"Drop",steps:6}),
+    ...run("inset",source,{distance:3,steps:4,blend:80}),...run("distort",source,{lens:"Ripple",frequency:6})]});
   cases.push({name:"1,500-anchor contour",result:run("color",[ringOf(1500)],{})});
   cases.push({name:"3,600 pt extrusion",result:run("extrude",source,{rx:180,ry:60,rz:91,depth:3600,perspective:85,light:-56})});
   const temp=mkdtempSync(join(tmpdir(),"vector-effects-qa-"));

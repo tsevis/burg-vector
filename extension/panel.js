@@ -1,22 +1,28 @@
 (() => {
   "use strict";
-  const $=id=>document.getElementById(id), G=VectorGeometry;
-  const svgNS="http://www.w3.org/2000/svg";
-  const svg=(name,attrs)=>{const el=document.createElementNS(svgNS,name);
-    for (const [key,val] of Object.entries(attrs)) el.setAttribute(key,val); return el;};
-  const option=(text,value=text)=>new Option(text,value);
-  const values=new Map(), controls=new Map(), beforeVariation=new Map();
+  const $=id=>document.getElementById(id), G=VectorGeometry, S=VectorSettings, W=VectorWidgets;
   const bridge=window.__adobe_cep__;
-  let token=null,busy=false,result=null,original=false,frame=0;
-  let effect=VectorCatalog[0],source=bridge ? [] : sample(),drag=null,stageBounds=null;
+  const FAMILY=9, PARENT=4, VARY=0.12;
+  const values=new Map(), widgets=new Map(), beforeVariation=new Map();
+  let prefs=S.prefs(), effect=VectorCatalog[0], mode="tweak", family=[], presetName="Default";
+  let token=null,busy=false,result=null,original=false,frame=0,saveTimer=0;
+  let source=bridge ? [] : sample();
   let revision=null,reading=false,inspectNext=false,timer=0,epoch=0;
   let idleMessage="Looking for selected artwork…";
-  let editOrigin=null;
-  const defaults=()=>Object.fromEntries(effect.controls.map(c=>[c.key,c.value]));
+
+  const defaults=e=>Object.fromEntries(e.controls.map(c=>[c.key,c.value]));
   const params=()=>values.get(effect.id);
   const status=(msg,error=false)=>{$("status").textContent=msg;$("status").dataset.error=error;};
-  const key=()=>"vector-effects.preset."+effect.id;
-  function saved() {try {return JSON.parse(localStorage.getItem(key()));} catch (_) {return null;}}
+  // Stored values are kept only where they are still valid for the control.
+  function sanitize(e,data) {
+    const out=defaults(e);
+    for (const c of e.controls) {
+      const v=data && data[c.key];
+      if (c.options ? c.options.includes(v) : c.color ? /^#[0-9a-f]{6}$/i.test(v) :
+        Number.isFinite(v) && v>=c.min && v<=c.max) out[c.key]=v;
+    }
+    return out;
+  }
   function sample() {
     const n=48,points=[];
     // A lobed seal with an open counter makes curvature and compound holes visible.
@@ -26,7 +32,7 @@
       const dx=k*(dr*Math.cos(a)-r*Math.sin(a)),dy=k*(dr*Math.sin(a)+r*Math.cos(a));
       points.push([x,y,x-dx,y-dy,x+dx,y+dy]);
     }
-    return [{paths:[{closed:true,points},G.circle(0,0,17)],fill:[246,113,71],stroke:null,width:0,opacity:100,evenodd:true}];
+    return [{paths:[{closed:true,points},G.circle(0,0,17)],fill:[73,99,158],stroke:null,width:0,opacity:100,evenodd:true}];
   }
   function host(script) {
     return new Promise((resolve,reject)=>{
@@ -36,200 +42,212 @@
       });
     });
   }
+  const stage=VectorStage($("preview"),{effect:()=>effect,params,source:()=>source,result:()=>result,
+    original:()=>original,set:(key,v,final)=>set(key,v,final)});
+
+  /* ---------- Preferences ---------- */
+  function applyPrefs() {
+    document.body.classList.toggle("numeric",prefs.numeric);
+    document.body.classList.toggle("large",prefs.large);
+    const canvas=$("canvas");
+    canvas.className="canvas bg-"+prefs.background;
+    canvas.style.setProperty("--well",prefs.background==="custom" ? prefs.backgroundColor : "");
+  }
+  function openPrefs() {
+    const form=$("prefs").querySelector("form");
+    for (const key of ["realtime","restore","graphical","numeric","large"]) form.elements[key].checked=prefs[key];
+    form.elements.background.value=prefs.background;form.elements.backgroundColor.value=prefs.backgroundColor;
+    $("prefs").returnValue="";$("prefs").showModal();
+  }
+  $("prefs").addEventListener("close",()=>{
+    if ($("prefs").returnValue!=="ok") return;
+    const f=$("prefs").querySelector("form").elements;
+    prefs={...prefs,realtime:f.realtime.checked,restore:f.restore.checked,graphical:f.graphical.checked,
+      numeric:f.numeric.checked,large:f.large.checked,background:f.background.value,backgroundColor:f.backgroundColor.value};
+    if (!S.savePrefs(prefs)) status("Preferences apply now but could not be saved.",true);
+    applyPrefs();if (!$("drawer").hidden) drawer();
+  });
+  $("prefs").querySelector("input[name=backgroundColor]").addEventListener("input",e=>{
+    e.target.form.elements.background.value="custom";
+  });
+
+  /* ---------- Controls ---------- */
+  function limits(c) {
+    const contours=source.flatMap(s=>s.paths);
+    if (effect.id!=="point" || !contours.length) return c;
+    if (c.key==="contour") return {...c,max:Math.min(c.max,contours.length)};
+    if (c.key==="index") {
+      const target=contours[params().contour-1];
+      return {...c,max:Math.min(c.max,target ? target.points.length : Math.max(...contours.map(p=>p.points.length)))};
+    }
+    return c;
+  }
+  function buildControls() {
+    const root=$("controls");root.replaceChildren();widgets.clear();
+    let section=null,grid=null;
+    for (const raw of effect.controls) {
+      if (effect.id==="point" && ["dx","dy"].includes(raw.key) && !params().mode.startsWith("Move")) continue;
+      const c=limits(raw);
+      if (!c.options && !c.color) params()[c.key]=Math.min(params()[c.key],c.max);
+      if (!section || raw.section) {
+        section=document.createElement("section");section.className="section";
+        const h=document.createElement("h3");h.textContent=raw.section || "Adjustments";
+        grid=document.createElement("div");grid.className="grid";
+        section.append(h,grid);root.append(section);
+      }
+      const w=W.control(c,params()[c.key],(v,final)=>set(c.key,v,final,true));
+      widgets.set(c.key,w);grid.append(w.el);
+    }
+  }
+  // Changes from widgets, handles and Explore all arrive here.
+  function set(key,v,final=false,fromWidget=false) {
+    if (key!==null) {
+      const c=effect.controls.find(p=>p.key===key);
+      if (!c) return;
+      const value=c.options || c.color ? v : Math.max(c.min,Math.min(c.max,fromWidget ? v : Math.round(v)));
+      params()[key]=value;
+      if (!fromWidget && widgets.has(key)) widgets.get(key).set(value);
+      presetName=null;original=false;
+      // Rebuilding replaces the pill being dragged, so a contour change waits for release.
+      if (effect.id==="point" && (key==="mode" || (key==="contour" && final))) buildControls();
+    }
+    if (prefs.realtime || final) schedule();
+    remember();
+  }
+  function remember() {
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(()=>S.saveLast(effect.id,Object.fromEntries(values)),400);
+  }
+  function setParams(data,name=null) {
+    values.set(effect.id,sanitize(effect,data));presetName=name;original=false;
+    buildControls();renderNow();remember();
+    if (mode==="explore") breed();
+  }
+  function selectEffect(id) {
+    effect=VectorCatalog.find(e=>e.id===id) || VectorCatalog[0];
+    if (!values.has(effect.id)) values.set(effect.id,defaults(effect));
+    $("effect").value=effect.id;$("effect-name").textContent=effect.name;
+    presetName=JSON.stringify(params())===JSON.stringify(defaults(effect)) ? "Default" : null;
+    original=false;buildControls();renderNow();remember();
+    if (!$("drawer").hidden) drawer();
+    if (mode==="explore") breed();
+  }
+
+  /* ---------- Rendering ---------- */
   function sync() {
     $("apply").disabled=busy || !token || !result;
     $("compare").disabled=!source.length;
     $("effect").disabled=busy;
     $("vary").disabled=busy || !result;
-  }
-  function setParams(data) {
-    values.set(effect.id,{...defaults(),...data});
-    buildControls(); renderNow();
-  }
-  function presets(selected="Default") {
-    const menu=$("preset");menu.replaceChildren(option("Default"),option(effect.preset[0]));
-    if (saved()) menu.add(option("My preset"));
-    if (beforeVariation.has(effect.id)) menu.add(option("Before variation"));
-    const custom=option("Custom"); custom.disabled=true;menu.add(custom);
-    menu.value=selected;
-  }
-  function selectEffect(id) {
-    effect=VectorCatalog.find(e=>e.id===id);
-    if (!values.has(id)) values.set(id,defaults());
-    original=false;
-    presets(JSON.stringify(params())===JSON.stringify(defaults()) ? "Default" : "Custom");
-    buildControls(); renderNow();
-  }
-  function setValue(c,value) {
-    params()[c.key]=value;$("preset").value="Custom";original=false;schedule();
-  }
-  function vary() {
-    const previous={...params()}, next={...previous};
-    const candidates=[...controls.keys()].filter(key=>
-      key!=="contour" && (key!=="index" || !previous.mode.startsWith("Move")));
-    for (let i=0;i<2 && candidates.length;i++) {
-      const key=candidates.splice(Math.floor(Math.random()*candidates.length),1)[0];
-      const [input]=controls.get(key), min=Number(input.min), max=Number(input.max), step=Number(input.step);
-      const steps=Math.round((max-min)/step), current=Math.round((previous[key]-min)/step);
-      if (!steps) continue;
-      const {fineMax}=effect.controls.find(c=>c.key===key);
-      const span=fineMax===undefined ? steps : Math.max(fineMax,previous[key])/step;
-      const distance=Math.max(1,Math.round(span*(0.035+Math.random()*0.065)));
-      const towardMax=current===0 || (current<steps && Math.random()<0.5);
-      const moved=Math.max(0,Math.min(steps,current+(towardMax ? distance : -distance)));
-      next[key]=Number((min+moved*step).toFixed(4));
-    }
-    const wasOriginal=original;
-    original=false;
-    setParams(next);
-    if (!result || Object.keys(next).every(key=>next[key]===previous[key])) {
-      original=wasOriginal;
-      setParams(previous);
-      status("Try another variation or adjust a control.");
-      return;
-    }
-    beforeVariation.set(effect.id,previous);presets("Custom");
-  }
-  function buildControls() {
-    const container=$("controls");container.replaceChildren();controls.clear();
-    for (const c of effect.controls) {
-      if (effect.id==="point" && ["dx","dy"].includes(c.key) && !params().mode.startsWith("Move")) continue;
-      const row=document.createElement("div");row.className="control";
-      const title=document.createElement("div");title.className="control-title";
-      const label=document.createElement("label");label.htmlFor="control-"+c.key;
-      label.textContent=c.label+(c.unit ? " ("+c.unit+")" : ""); title.append(label);row.append(title);
-      if (c.options) {
-        const menu=document.createElement("select");menu.id=label.htmlFor;
-        for (const o of c.options) menu.add(option(o));
-        menu.value=params()[c.key];
-        menu.onchange=()=>{setValue(c,menu.value);if(effect.id==="point") buildControls();};
-        row.append(menu);
-      } else {
-        const num=document.createElement("input"),slider=document.createElement("input");
-        num.type="number";num.id=label.htmlFor;
-        slider.type="range";slider.setAttribute("aria-label",c.label);
-        const contours=source.flatMap(s=>s.paths);
-        let max=c.max;
-        if (contours.length && effect.id==="point" && c.key==="index") {
-          const target=contours[params().contour-1];
-          max=Math.min(c.max,target ? target.points.length : Math.max(...contours.map(p=>p.points.length)));
-        }
-        if (contours.length && effect.id==="point" && c.key==="contour") max=Math.min(c.max,contours.length);
-        params()[c.key]=Math.min(params()[c.key],max);
-        const {fineMax=Infinity,coarseStep=1}=c;
-        const toTick=v=>v>fineMax ? fineMax+Math.round((v-fineMax)/coarseStep) : v;
-        const fromTick=t=>t>fineMax ? fineMax+(t-fineMax)*coarseStep : t;
-        const positionSlider=v=>{
-          slider.value=toTick(v);
-          if (c.fineMax!==undefined) slider.setAttribute("aria-valuetext",v+" "+c.unit);
-        };
-        num.min=slider.min=c.min;num.step=slider.step=c.step;
-        num.max=max;slider.max=toTick(max);num.value=params()[c.key];positionSlider(params()[c.key]);
-        slider.oninput=()=>{
-          const v=fromTick(Number(slider.value));num.value=v;positionSlider(v);setValue(c,v);
-        };
-        num.onchange=()=>{
-          if (!num.value || !num.validity.valid) {num.value=params()[c.key];return;}
-          const v=Number(num.value);positionSlider(v);setValue(c,v);
-        };
-        controls.set(c.key,[num,slider]);title.append(num);row.append(slider);
-      }
-      container.append(row);
-    }
-  }
-  function pathData(p) {
-    const pts=p.points;let d="M"+pts[0][0]+" "+pts[0][1];
-    for (let i=0;i<pts.length-(p.closed ? 0 : 1);i++) {
-      const a=pts[i],b=pts[(i+1)%pts.length];
-      d+="C"+[a[4],a[5],b[2],b[3],b[0],b[1]].join(" ");
-    }
-    return d+(p.closed ? "Z" : "");
-  }
-  const paint=c=>c ? "rgb("+c.slice(0,3).map(Math.round).join(",")+")" : "none";
-  function draw() {
-    const view=$("preview"),output=original || !result ? source : result;
-    $("prompt").hidden=!!source.length;
+    $("remove").disabled=!presetName || !S.presets(effect.id).some(p=>p.name===presetName);
     $("compare").textContent=original ? "Show effect" : "Show original";
     $("compare").setAttribute("aria-pressed",String(original));
-    if (!source.length) {view.replaceChildren();$("prompt").textContent=idleMessage;return;}
-    const b=G.bounds(source), all=G.bounds(source.concat(result||[]),true);
-    const corners={tl:[b.x0,b.y1],tr:[b.x1,b.y1],bl:[b.x0,b.y0],br:[b.x1,b.y0]};
-    const handles=[];
-    if (!original && effect.id==="warp") {
-      for (const [id,[x,y]] of Object.entries(corners)) {
-        const hx=x+params()[id+"x"]*b.w/100,hy=y+params()[id+"y"]*b.h/100;
-        handles.push([id,hx,hy]);all.x0=Math.min(all.x0,hx);all.x1=Math.max(all.x1,hx);
-        all.y0=Math.min(all.y0,hy);all.y1=Math.max(all.y1,hy);
-      }
-    }
-    if (!original && ["distort","flare","shatter"].includes(effect.id))
-      handles.push(["center",b.x0+b.w*params().cx/100,b.y0+b.h*params().cy/100]);
-    const padding=Math.max(1,Math.max(all.x1-all.x0,all.y1-all.y0)*0.12);
-    if (!drag || !stageBounds) stageBounds=[all.x0-padding,-all.y1-padding,
-      Math.max(1,all.x1-all.x0)+2*padding,Math.max(1,all.y1-all.y0)+2*padding];
-    view.setAttribute("viewBox",stageBounds.join(" "));view.replaceChildren();
-    const g=svg("g",{transform:"scale(1,-1)"});view.append(g);
-    for (const s of output) {
-      const el=svg("path",{d:s.paths.map(pathData).join(" "),fill:paint(s.fill),stroke:paint(s.stroke),
-        "stroke-width":s.width||0,"fill-rule":s.evenodd ? "evenodd" : "nonzero",
-        "stroke-linecap":s.cap||"butt","stroke-linejoin":s.join||"miter",
-        "stroke-miterlimit":s.miter||4,opacity:s.opacity/100});
-      if (s.dash && s.dash.length) {el.setAttribute("stroke-dasharray",s.dash.join(" "));el.setAttribute("stroke-dashoffset",s.dashOffset||0);}
-      g.append(el);
-    }
-    const handleSize=Math.max(stageBounds[2]/Math.max(1,view.clientWidth),stageBounds[3]/Math.max(1,view.clientHeight))*4;
-    for (const [id,x,y] of handles) {
-      const dot=svg("circle",{cx:x,cy:y,r:handleSize,fill:"#202022",stroke:"#fff2dc","stroke-width":handleSize/3});
-      dot.dataset.drag=id;dot.setAttribute("cursor","move");g.append(dot);
-    }
-    if (!original && result && effect.id==="point") {
-      let contour=0;
-      for (const shape of source) for (const path of shape.paths) {
-        contour++;
-        for (let i=0;i<path.points.length;i++) {
-          const active=(!params().contour || params().contour===contour) && params().index===i+1;
-          if (!active && path.points.length>180) continue;
-          const q=path.points[i].slice();
-          if (active && params().mode==="Move anchor") {
-            for (const j of [0,2,4]) {q[j]+=params().dx;q[j+1]+=params().dy;}
-          }
-          const mark=(kind,x,y,size,fill)=>{
-            const dot=svg("circle",{cx:x,cy:y,r:size,fill,stroke:"#202022","stroke-width":handleSize/4,cursor:"move"});
-            dot.dataset.drag=kind;dot.dataset.contour=String(contour);dot.dataset.index=String(i+1);g.append(dot);
-          };
-          if (active) for (const [j,kind] of [[2,"incoming"],[4,"outgoing"]]) {
-            if (params().mode==="Move "+kind+" handle") {q[j]+=params().dx;q[j+1]+=params().dy;}
-            if (G.dist(q,q.slice(j,j+2))<handleSize*0.7) continue;
-            g.append(svg("line",{x1:q[0],y1:q[1],x2:q[j],y2:q[j+1],stroke:"#eee2d1","stroke-width":handleSize/5}));
-            mark(kind,q[j],q[j+1],handleSize*0.75,"#f5b491");
-          }
-          mark("anchor",q[0],q[1],handleSize*(active ? 1 : 0.62),active ? "#fff2dc" : "#b1a699");
-        }
-      }
-    }
   }
   function renderNow() {
     if (frame) {cancelAnimationFrame(frame);frame=0;}
-    if (!source.length) {result=null;status("");draw();sync();return;}
+    $("prompt").hidden=!!source.length;
+    if (!source.length) {result=null;status("");$("prompt").textContent=idleMessage;stage.draw();sync();return;}
     try {
       result=VectorEffects.run(effect.id,source,params());
       const anchors=result.reduce((n,s)=>n+s.paths.reduce((sum,p)=>sum+p.points.length,0),0);
       if (token) status(result.length+" vector "+(result.length===1?"object":"objects")+" · "+anchors+" anchors");
       else if (!bridge) status("Sample preview. Open the panel in Illustrator to use your artwork.");
     } catch (e) {result=null;status(e.message,true);}
-    draw();sync();
+    stage.draw();sync();
   }
   function schedule() {
     if (!frame) frame=requestAnimationFrame(()=>{frame=0;renderNow();});
   }
+  const attempt=values=>{try {return VectorEffects.run(effect.id,source,values);} catch (e) {return e;}};
+  function tile(shapes,cls,label) {
+    const button=document.createElement("button");button.type="button";button.className=cls;
+    if (shapes instanceof Error) {
+      const why=document.createElement("span");why.className="failed";why.textContent=shapes.message;button.append(why);
+    } else button.append(VectorRender.thumbnail(shapes));
+    if (label) {const name=document.createElement("span");name.textContent=label;button.append(name);}
+    return button;
+  }
+
+  /* ---------- Explore ---------- */
+  function breed(parent=params()) {
+    family=Array.from({length:FAMILY},(_,i)=>i===PARENT ? {...parent} :
+      VectorExplore.mutate(effect,parent,prefs.mutation/100));
+    const grid=$("explore");grid.replaceChildren();
+    if (!source.length) return;
+    family.forEach((child,i)=>{
+      const t=tile(attempt(child),"tile"+(i===PARENT ? " parent" : ""));
+      t.title=i===PARENT ? "Current settings" : "Adopt this variation";
+      t.setAttribute("aria-label",t.title);
+      t.onclick=()=>{
+        if (i===PARENT) {setMode("tweak");return;}
+        beforeVariation.set(effect.id,{...params()});
+        setParams(family[i]);status("Adopted a variation. Its children are shown around it.");
+      };
+      grid.append(t);
+    });
+  }
+  function setMode(next) {
+    mode=next;
+    $("mode-tweak").setAttribute("aria-pressed",String(mode==="tweak"));
+    $("mode-explore").setAttribute("aria-pressed",String(mode==="explore"));
+    $("explore").hidden=$("explore-bar").hidden=mode!=="explore";
+    for (const id of ["zoom-in","zoom-out","pan"]) $(id).disabled=mode==="explore";
+    if (mode==="explore") {breed();status("Click a variation to adopt it. The centre tile is the current setting.");}
+    else renderNow();
+  }
+  function exploreBar() {
+    const bar=$("explore-bar");
+    const amount=W.scrubber({key:"mutation",label:"Mutation",min:0,max:100,step:1,unit:"%"},prefs.mutation,(v,final)=>{
+      prefs={...prefs,mutation:v};if (final) {S.savePrefs(prefs);breed();}
+    });
+    const again=document.createElement("button");again.type="button";again.className="pill small";again.textContent="New family";
+    again.onclick=()=>breed();
+    bar.append(amount.el,again);
+  }
+
+  /* ---------- Presets ---------- */
+  function presetChoices() {
+    const list=[{name:"Default",values:{}},{name:effect.preset[0],values:effect.preset[1]}];
+    for (const p of S.presets(effect.id)) list.push({...p,user:true});
+    if (beforeVariation.has(effect.id)) list.push({name:"Before variation",values:beforeVariation.get(effect.id)});
+    return list;
+  }
+  function drawer() {
+    const list=$("preset-list");list.replaceChildren();
+    list.classList.toggle("text",!prefs.graphical);
+    for (const p of presetChoices()) {
+      const shown=sanitize(effect,p.values);
+      const item=prefs.graphical && source.length ? tile(attempt(shown),"preset",p.name) : tile([],"preset",p.name);
+      if (!prefs.graphical) item.querySelector("svg").remove();
+      item.setAttribute("aria-current",String(p.name===presetName));
+      item.onclick=()=>{setParams(p.values,p.name);drawer();status("Preset: "+p.name+".");};
+      list.append(item);
+    }
+  }
+  function toggleDrawer(open=$("drawer").hidden) {
+    $("drawer").hidden=!open;$("presets-btn").setAttribute("aria-expanded",String(open));
+    if (open) drawer();
+  }
+  $("save-form").addEventListener("submit",e=>{
+    e.preventDefault();
+    const name=$("preset-name").value.trim();
+    if (!name) {$("preset-name").focus();return;}
+    if (["Default","Before variation",effect.preset[0]].includes(name)) {status("Choose another name; that one is built in.",true);return;}
+    if (S.savePreset(effect.id,name,{...params()})) {presetName=name;$("preset-name").value="";drawer();sync();status("Saved preset “"+name+"”.");}
+    else status("This panel could not save the preset.",true);
+  });
+
+  /* ---------- Illustrator ---------- */
   function showSelection(data) {
     revision=data.revision || null; token=data.token || null; source=data.shapes || [];
-    drag=editOrigin=stageBounds=null;original=false;
-    idleMessage=data.reason || "";
+    original=false;idleMessage=data.reason || "";
     $("source").textContent=token ? "Selection · "+source.length+" "+(source.length===1?"object":"objects") :
       data.state==="empty" ? "No selection" : "Preview unavailable";
+    stage.fit();
     if (effect.id==="point") buildControls();
     renderNow();
+    if (mode==="explore") breed();
+    if (!$("drawer").hidden) drawer();
   }
   async function refresh(inspect=false) {
     clearTimeout(timer);
@@ -260,63 +278,47 @@
     } catch(e) {status(e.message,true);}
     finally {busy=false;sync();refresh(true);}
   }
-  const view=$("preview");
-  view.addEventListener("pointerdown",e=>{
-    if (!e.target.dataset.drag) return;
-    drag=e.target.dataset.drag;editOrigin=null;
-    if (e.target.dataset.contour) {
-      const contour=Number(e.target.dataset.contour),i=Number(e.target.dataset.index);
-      const q=source.flatMap(s=>s.paths)[contour-1].points[i-1];
-      const j=drag==="anchor" ? 0 : (drag==="incoming" ? 2 : 4);
-      const mode=drag==="anchor" ? "Move anchor" : "Move "+drag+" handle";
-      if (params().mode!==mode || params().index!==i || (params().contour && params().contour!==contour)) {
-        params().dx=0;params().dy=0;
-      }
-      Object.assign(params(),{contour,index:i,mode});
-      editOrigin=[q[j],q[j+1]];buildControls();schedule();
-    }
-    view.setPointerCapture(e.pointerId);
-  });
-  view.addEventListener("pointermove",e=>{
-    if (!drag) return;
-    const pos=new DOMPoint(e.clientX,e.clientY).matrixTransform(view.getScreenCTM().inverse()),b=G.bounds(source);
-    const set=(key,n)=>{
-      const c=effect.controls.find(p=>p.key===key),val=Math.max(c.min,Math.min(c.max,Math.round(n)));
-      params()[key]=val;for (const el of controls.get(key)) el.value=val;
-    };
-    if (editOrigin) {
-      set("dx",pos.x-editOrigin[0]);set("dy",-pos.y-editOrigin[1]);
-    } else if (drag==="center") {
-      set("cx",100*(pos.x-b.x0)/(b.w||1));set("cy",100*(-pos.y-b.y0)/(b.h||1));
-    } else {
-      set(drag+"x",100*(pos.x-(drag[1]==="l" ? b.x0 : b.x1))/(b.w||1));
-      set(drag+"y",100*(-pos.y-(drag[0]==="t" ? b.y1 : b.y0))/(b.h||1));
-    }
-    $("preset").value="Custom";schedule();
-  });
-  view.addEventListener("lostpointercapture",()=>{drag=null;editOrigin=null;schedule();});
-  for (const family of new Set(VectorCatalog.map(e=>e.family))) {
-    const group=document.createElement("optgroup"); group.label=family;
-    for (const e of VectorCatalog.filter(e=>e.family===family)) group.append(option(e.name,e.id));
+
+  /* ---------- Wiring ---------- */
+  for (const fam of new Set(VectorCatalog.map(e=>e.family))) {
+    const group=document.createElement("optgroup"); group.label=fam;
+    for (const e of VectorCatalog.filter(e=>e.family===fam)) group.append(new Option(e.name,e.id));
     $("effect").append(group);
   }
   $("effect").onchange=()=>selectEffect($("effect").value);
-  $("preset").onchange=()=>{
-    const selection=$("preset").value;
-    const choices={"Default":{},"My preset":saved(),"Before variation":beforeVariation.get(effect.id)};
-    original=false;setParams(choices[selection] || effect.preset[1]);
+  $("mode-tweak").onclick=()=>setMode("tweak");
+  $("mode-explore").onclick=()=>setMode("explore");
+  $("options").onclick=openPrefs;
+  $("presets-btn").onclick=()=>toggleDrawer();
+  $("vary").onclick=()=>{
+    if (!result) return;
+    beforeVariation.set(effect.id,{...params()});
+    setParams(VectorExplore.mutate(effect,params(),VARY));
+    status("Showing a variation. Presets → Before variation returns to the previous settings.");
   };
-  $("vary").onclick=vary;
-  $("save").onclick=()=>{
-    try {localStorage.setItem(key(),JSON.stringify(params()));presets("My preset");status("Saved settings for "+effect.name+".");}
-    catch (_) {status("This panel could not save the preset.",true);}
+  $("zoom-in").onclick=()=>stage.zoom(1.5);
+  $("zoom-out").onclick=()=>stage.zoom(1/1.5);
+  $("pan").onclick=()=>{const on=$("pan").getAttribute("aria-pressed")!=="true";$("pan").setAttribute("aria-pressed",String(on));stage.setPanning(on);};
+  $("pan").ondblclick=()=>stage.fit();
+  $("compare").onclick=()=>{original=!original;stage.draw();sync();};
+  $("save").onclick=()=>{toggleDrawer(true);$("preset-name").focus();};
+  $("remove").onclick=()=>{
+    if (presetName && S.removePreset(effect.id,presetName)) {status("Removed preset “"+presetName+"”.");presetName=null;}
+    if (!$("drawer").hidden) drawer();
+    sync();
   };
-  $("compare").onclick=()=>{original=!original;draw();};
+  $("reset").onclick=()=>{setParams({},"Default");status("Back to the default settings.");};
+  $("help").onclick=()=>status("Drag across a control to change it; hold Shift for fine steps. Double-click to type a value. Drag the blue handles in the preview.");
   $("apply").onclick=apply;
   if (bridge) {
     $("source").textContent="Selection";
     window.addEventListener("focus",()=>refresh(true));
     document.addEventListener("visibilitychange",()=>refresh(!document.hidden));
   }
-  selectEffect(effect.id);if (bridge) refresh();
+
+  applyPrefs();exploreBar();
+  const last=prefs.restore ? S.last() : null;
+  if (last) for (const e of VectorCatalog) if (last.values[e.id]) values.set(e.id,sanitize(e,last.values[e.id]));
+  selectEffect(last ? last.effect : effect.id);
+  if (bridge) refresh();
 })();
