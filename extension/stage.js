@@ -63,11 +63,9 @@ const VectorStage = (svg,app) => {
     }
   }
   const toWorld=e=>new DOMPoint(e.clientX,e.clientY).matrixTransform(svg.getScreenCTM().inverse());
-  svg.addEventListener("pointerdown",e=>{
-    if (panning && !e.target.dataset.drag) {
-      panFrom={x:e.clientX,y:e.clientY,dx:view.dx,dy:view.dy};svg.setPointerCapture(e.pointerId);return;
-    }
-    if (!e.target.dataset.drag) return;
+  VectorWidgets.track(svg,e=>{
+    if (panning && !e.target.dataset.drag) {panFrom={x:e.clientX,y:e.clientY,dx:view.dx,dy:view.dy};return;}
+    if (!e.target.dataset.drag) return false;
     drag=e.target.dataset.drag;editOrigin=null;
     if (e.target.dataset.contour) {
       const contour=Number(e.target.dataset.contour),i=Number(e.target.dataset.index),v=app.params();
@@ -78,9 +76,7 @@ const VectorStage = (svg,app) => {
       app.set("contour",contour);app.set("index",i);app.set("mode",mode,true);
       editOrigin=[q[j],q[j+1]];
     }
-    svg.setPointerCapture(e.pointerId);
-  });
-  svg.addEventListener("pointermove",e=>{
+  },e=>{
     if (panFrom) {
       const scale=Number(svg.getAttribute("viewBox").split(" ")[2])/Math.max(1,svg.clientWidth);
       view={...view,dx:panFrom.dx-(e.clientX-panFrom.x)*scale,dy:panFrom.dy-(e.clientY-panFrom.y)*scale};
@@ -94,8 +90,7 @@ const VectorStage = (svg,app) => {
       app.set(drag+"x",100*(pos.x-(drag[1]==="l" ? b.x0 : b.x1))/(b.w||1));
       app.set(drag+"y",100*(-pos.y-(drag[0]==="t" ? b.y1 : b.y0))/(b.h||1));
     }
-  });
-  svg.addEventListener("lostpointercapture",()=>{
+  },()=>{
     const was=drag;drag=null;editOrigin=null;panFrom=null;
     if (was) app.set(null,null,true);
   });

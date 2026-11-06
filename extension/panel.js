@@ -82,6 +82,7 @@
     }
     return c;
   }
+  const folds=new Set(VectorSettings.folds());
   function buildControls() {
     const root=$("controls");root.replaceChildren();widgets.clear();
     let section=null,grid=null;
@@ -91,7 +92,14 @@
       if (!c.options && !c.color) params()[c.key]=Math.min(params()[c.key],c.max);
       if (!section || raw.section) {
         section=document.createElement("section");section.className="section";
-        const h=document.createElement("h3");h.textContent=raw.section || "Adjustments";
+        const title=raw.section || "Adjustments",h=document.createElement("h3"),fold=document.createElement("button");
+        fold.type="button";fold.textContent=title;h.append(fold);
+        const folded=folds.has(effect.id+"/"+title),box=section;
+        box.classList.toggle("folded",folded);fold.setAttribute("aria-expanded",String(!folded));
+        fold.onclick=()=>{
+          const on=box.classList.toggle("folded");fold.setAttribute("aria-expanded",String(!on));
+          folds[on ? "add" : "delete"](effect.id+"/"+title);VectorSettings.saveFolds([...folds]);
+        };
         grid=document.createElement("div");grid.className="grid";
         section.append(h,grid);root.append(section);
       }

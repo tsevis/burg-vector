@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
-set "version=0.3.0"
+set "version=0.3.1"
 set "package=%~dp0Burg Vector.zxp"
 set "installerPath=Adobe\Adobe Desktop Common\RemoteComponents\UPI\UnifiedPluginInstallerAgent\UnifiedPluginInstallerAgent.exe"
 set "agent="
